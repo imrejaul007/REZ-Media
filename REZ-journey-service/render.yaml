@@ -1,0 +1,23 @@
+# render.yaml - REZ Journey Service
+services:
+  - type: web
+    name: rez-journey-service
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3009"
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: NOTIFICATION_SERVICE_URL
+        sync: false
+      - key: WEBHOOK_SERVICE_URL
+        sync: false

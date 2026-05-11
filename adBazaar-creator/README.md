@@ -1,37 +1,76 @@
-# Creator System
+# AdBazaar Creator
 
-Creator/Influencer marketplace and DOOH content platform.
+**Version:** 1.0
+**Date:** May 11, 2026
+
+---
+
+## Overview
+
+Creator/Influencer dashboard for the AdBazaar advertising platform. Enables creators to manage their ad campaigns and content.
+
+---
 
 ## Features
 
-### Influencer Marketplace
-- Creator profiles with social stats
-- Campaign posting by brands
-- Application system
-- Content review & approval
-- Earnings tracking
+| Feature | Description |
+|---------|-------------|
+| Campaign Dashboard | View and manage assigned campaigns |
+| Content Upload | Submit content for ad placements |
+| Earnings Tracking | Track revenue and payments |
+| Performance Stats | Analytics on campaign performance |
+| Profile Management | Manage creator profile and stats |
 
-### DOOH Content
-- Browse DOOH campaigns
-- Upload content for screens
-- Earn per scan
-- Real-time stats
+---
 
 ## Tech Stack
+
 - Next.js 14
 - Supabase
 - TypeScript
 
-## Setup
+---
+
+## Quick Start
 
 ```bash
+# Install dependencies
 npm install
+
+# Copy environment file
+cp .env.example .env
+
+# Start development server
 npm run dev
 ```
 
-## Environment
+---
+
+## Environment Variables
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+---
+
+## Deployment
+
+### Vercel (Recommended)
+
+```bash
+npm install -g vercel
+vercel
+```
+
+### Render
+
+```bash
+# Connect GitHub repo
+# Deploy with render.yaml
+```
+
+---
+
+**Built for scale, designed for growth.**

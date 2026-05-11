@@ -1,0 +1,21 @@
+# render.yaml - AdBazaar Creator
+# Note: AdBazaar-creator is a Next.js frontend app optimized for Vercel deployment
+# This render.yaml is provided for alternative deployment options
+services:
+  - type: web
+    name: adbazaar-creator
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
