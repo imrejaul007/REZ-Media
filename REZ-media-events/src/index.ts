@@ -16,12 +16,21 @@ import { startMediaWorker, stopWorker } from './worker';
 import { startHttpServer } from './http';
 
 function validateEnv(): void {
+  // Fail-closed: Check all required environment variables at startup
+  const required = ['MONGODB_URI', 'REDIS_URL'];
+  const missing = required.filter((key) => !process.env[key]);
+
   const cloudinaryVars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
   const missingCloudinary = cloudinaryVars.filter((k) => !process.env[k]);
-  if (missingCloudinary.length > 0) {
-    // MED-SEC-FIX: Downgrade from warn to error — Cloudinary is required for the
-    // upload endpoint to function. A missing env var should not silently degrade.
-    logger.error(`[rez-media-events] FATAL: Missing Cloudinary env vars: ${missingCloudinary.join(', ')} — upload endpoint will fail`);
+  missing.push(...missingCloudinary);
+
+  // Service tokens for internal service communication
+  if (!process.env.INTERNAL_SERVICE_TOKENS_JSON && !process.env.INTERNAL_SERVICE_TOKEN) {
+    missing.push('INTERNAL_SERVICE_TOKENS_JSON or INTERNAL_SERVICE_TOKEN');
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`[rez-media-events] FATAL: Missing required env vars: ${missing.join(', ')}`);
   }
 }
 

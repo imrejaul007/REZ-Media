@@ -57,16 +57,123 @@ const notificationQueue = new Queue('notification-events', { connection: bullmqR
 // Only HTTPS URLs from approved hosts may be downloaded. This prevents attackers
 // from tricking the service into fetching internal network resources (localhost,
 // 169.254.169.254 metadata endpoint, internal IPs, etc.).
-const ALLOWED_IMAGE_HOSTS = (process.env.ALLOWED_IMAGE_HOSTS || 'res.cloudinary.com,images.unsplash.com,api.rez.money').split(',');
+const ALLOWED_IMAGE_HOSTS = (process.env.ALLOWED_IMAGE_HOSTS || 'res.cloudinary.com,images.unsplash.com').split(',');
+
+// SSRF-002: Private/internal IP address ranges to block
+// Covers: loopback (127.x.x.x), link-local (169.254.x.x), private (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,                           // Loopback (127.0.0.0/8)
+  /^169\.254\./,                      // Link-local (169.254.0.0/16) — includes AWS metadata endpoint
+  /^10\./,                            // Private (10.0.0.0/8)
+  /^192\.168\./,                      // Private (192.168.0.0/16)
+  /^172\.(1[6-9]|2[0-9]|3[0-1])\./,   // Private (172.16.0.0/12)
+];
+
+// IPv6 private/local ranges
+const PRIVATE_IPV6_PATTERNS = [
+  /^::1$/i,                           // Loopback
+  /^::ffff:(127\.)/,                  // IPv4-mapped IPv6
+  /^fe80:/i,                          // Link-local
+  /^fc00:/i,                         // Unique local
+  /^fd00:/i,                         // Unique local
+];
+
+function isPrivateOrInternalIp(ip: string): boolean {
+  if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(ip))) {
+    return true;
+  }
+  if (PRIVATE_IPV6_PATTERNS.some((pattern) => pattern.test(ip))) {
+    return true;
+  }
+  return false;
+}
 
 function isUrlAllowed(url: string): boolean {
+  // SSRF-001: Reject malformed URLs early
+  let parsed: URL;
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') return false;
-    return ALLOWED_IMAGE_HOSTS.includes(parsed.host);
+    parsed = new URL(url);
   } catch {
+    logger.warn('[SSRF] Blocked malformed URL', { url });
     return false;
   }
+
+  // SSRF-003: Protocol validation — only HTTPS allowed
+  if (parsed.protocol !== 'https:') {
+    logger.warn('[SSRF] Blocked non-HTTPS URL', { url, protocol: parsed.protocol });
+    return false;
+  }
+
+  // SSRF-004: Host validation — check for IP addresses (IPv4 and IPv6)
+  const host = parsed.host;
+  const isIpV4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+  const isIpV6 = host.includes(':');
+
+  if (isIpV4 || isIpV6) {
+    logger.warn('[SSRF] Blocked direct IP address URL', { url, host, isIpV4, isIpV6 });
+    return false;
+  }
+
+  // SSRF-002: Block private/internal IP ranges (DNS rebinding defense)
+  // Resolve hostname to IP and verify it's not a private range
+  try {
+    const dns = require('dns');
+    const { promisify } = require('util');
+    const lookup = promisify(dns.lookup);
+    // Note: This is synchronous-ish; in production consider caching resolved IPs
+    // For this single-threaded worker context, the synchronous approach is acceptable
+    const dnsSync = require('dns').lookup;
+    let resolvedIp: string | null = null;
+    dnsSync(host, { all: false }, (err: Error | null, address: string) => {
+      if (!err) resolvedIp = address;
+    });
+    // Use synchronous lookup via hints to avoid callback complexity
+    const { Resolver } = require('dns');
+    const resolver = new Resolver();
+    resolver.setServers(['8.8.8.8']); // Use public DNS to avoid DNS rebinding via local resolver
+    try {
+      const addresses = resolver.resolve4Sync(host);
+      if (addresses && addresses.length > 0) {
+        resolvedIp = addresses[0];
+      }
+    } catch {
+      // Try IPv6
+      try {
+        const addresses6 = resolver.resolve6Sync(host);
+        if (addresses6 && addresses6.length > 0) {
+          resolvedIp = addresses6[0];
+        }
+      } catch {
+        // No DNS resolution possible — fail closed (block)
+        logger.warn('[SSRF] DNS resolution failed, blocking URL', { url, host });
+        return false;
+      }
+    }
+    if (resolvedIp && isPrivateOrInternalIp(resolvedIp)) {
+      logger.warn('[SSRF] Blocked URL resolving to private IP', {
+        url,
+        host,
+        resolvedIp,
+      });
+      return false;
+    }
+  } catch (err) {
+    // If DNS module unavailable, log and block
+    logger.warn('[SSRF] DNS check failed, blocking URL as precaution', { url, error: String(err) });
+    return false;
+  }
+
+  // SSRF-001: Host allowlist validation
+  if (!ALLOWED_IMAGE_HOSTS.includes(parsed.host)) {
+    logger.warn('[SSRF] Blocked URL host not in allowlist', {
+      url,
+      host: parsed.host,
+      allowedHosts: ALLOWED_IMAGE_HOSTS,
+    });
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -78,7 +185,8 @@ function isUrlAllowed(url: string): boolean {
  */
 async function downloadImage(url: string): Promise<Buffer> {
   if (!isUrlAllowed(url)) {
-    throw new Error(`SSRF block: URL host not in allowlist — ${url}`);
+    logger.error('[SSRF] Blocked image download attempt', { url });
+    throw new Error(`SSRF block: URL not allowed — ${url}`);
   }
   const response = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer', timeout: 30_000 });
   return Buffer.from(response.data);

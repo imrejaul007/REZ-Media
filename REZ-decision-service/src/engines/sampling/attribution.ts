@@ -4,9 +4,251 @@
  * Credits campaigns accurately across multi-touch user journeys
  */
 
-import Redis from 'ioredis';
+import Redis, { Redis as RedisClient } from 'ioredis';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// ============================================
+// REDIS CONNECTION MANAGER
+// ============================================
+
+const REDIS_CONFIG = {
+  maxRetries: 3,
+  retryDelayMs: 1000,
+  connectTimeoutMs: 5000,
+  commandTimeoutMs: 3000,
+};
+
+interface RedisConnectionState {
+  client: RedisClient | null;
+  isConnected: boolean;
+  lastError: Error | null;
+  connectionAttempts: number;
+}
+
+const connectionState: RedisConnectionState = {
+  client: null,
+  isConnected: false,
+  lastError: null,
+  connectionAttempts: 0,
+};
+
+/**
+ * Log Redis errors with context for monitoring
+ */
+function logRedisError(operation: string, error: Error, context?: Record<string, any>): void {
+  console.error('[Redis Error]', {
+    operation,
+    error: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+    connectionAttempts: connectionState.connectionAttempts,
+    isConnected: connectionState.isConnected,
+    ...context,
+  });
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Create a resilient Redis connection with retry logic
+ */
+async function createRedisConnection(): Promise<RedisClient | null> {
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+  for (let attempt = 1; attempt <= REDIS_CONFIG.maxRetries; attempt++) {
+    try {
+      connectionState.connectionAttempts = attempt;
+
+      const client = new Redis(redisUrl, {
+        connectTimeout: REDIS_CONFIG.connectTimeoutMs,
+        commandTimeout: REDIS_CONFIG.commandTimeoutMs,
+        retryStrategy: (times) => {
+          if (times > REDIS_CONFIG.maxRetries) {
+            return null; // Stop retrying
+          }
+          const delay = Math.min(
+            REDIS_CONFIG.retryDelayMs * Math.pow(2, times - 1),
+            10000 // Max 10 seconds
+          );
+          console.log(`[Redis] Reconnecting in ${delay}ms (attempt ${times})`);
+          return delay;
+        },
+        lazyConnect: true,
+      });
+
+      // Set up event handlers
+      client.on('connect', () => {
+        console.log('[Redis] Connected successfully');
+        connectionState.isConnected = true;
+        connectionState.lastError = null;
+      });
+
+      client.on('ready', () => {
+        console.log('[Redis] Ready to accept commands');
+        connectionState.isConnected = true;
+      });
+
+      client.on('error', (error) => {
+        logRedisError('connection', error);
+        connectionState.isConnected = false;
+        connectionState.lastError = error;
+      });
+
+      client.on('close', () => {
+        console.log('[Redis] Connection closed');
+        connectionState.isConnected = false;
+      });
+
+      client.on('reconnecting', () => {
+        console.log('[Redis] Reconnecting...');
+      });
+
+      // Attempt connection
+      await client.connect();
+
+      // Verify connection with ping
+      await client.ping();
+
+      return client;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logRedisError(`connection attempt ${attempt}/${REDIS_CONFIG.maxRetries}`, err);
+
+      if (attempt < REDIS_CONFIG.maxRetries) {
+        const delay = REDIS_CONFIG.retryDelayMs * Math.pow(2, attempt - 1);
+        console.log(`[Redis] Retrying connection in ${delay}ms...`);
+        await sleep(delay);
+      }
+    }
+  }
+
+  console.error('[Redis] Failed to connect after all retry attempts');
+  return null;
+}
+
+/**
+ * Initialize Redis connection (call at service startup)
+ */
+async function initializeRedis(): Promise<RedisClient | null> {
+  if (connectionState.client && connectionState.isConnected) {
+    return connectionState.client;
+  }
+
+  connectionState.client = await createRedisConnection();
+  return connectionState.client;
+}
+
+/**
+ * Get the current Redis client, or null if unavailable
+ */
+function getRedisClient(): RedisClient | null {
+  if (connectionState.client && connectionState.isConnected) {
+    return connectionState.client;
+  }
+  return null;
+}
+
+/**
+ * Check if Redis is available
+ */
+function isRedisAvailable(): boolean {
+  return connectionState.isConnected && connectionState.client !== null;
+}
+
+/**
+ * Execute a Redis command with error handling and graceful degradation
+ */
+async function executeRedisCommand<T>(
+  operation: string,
+  command: () => Promise<T>,
+  fallback: T
+): Promise<{ result: T; error: string | null; available: boolean }> {
+  const client = getRedisClient();
+
+  if (!client) {
+    const errorMsg = `Redis unavailable for operation: ${operation}`;
+    logRedisError(operation, connectionState.lastError || new Error(errorMsg));
+    return {
+      result: fallback,
+      error: errorMsg,
+      available: false,
+    };
+  }
+
+  try {
+    const result = await Promise.race([
+      command(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Redis command timeout')), REDIS_CONFIG.commandTimeoutMs)
+      ),
+    ]);
+
+    return {
+      result,
+      error: null,
+      available: true,
+    };
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    logRedisError(operation, err);
+    return {
+      result: fallback,
+      error: err.message,
+      available: false,
+    };
+  }
+}
+
+/**
+ * Health check for Redis connection
+ */
+async function checkRedisHealth(): Promise<{
+  healthy: boolean;
+  latencyMs?: number;
+  error?: string;
+}> {
+  const client = getRedisClient();
+
+  if (!client) {
+    return {
+      healthy: false,
+      error: 'No Redis client available',
+    };
+  }
+
+  try {
+    const start = Date.now();
+    await client.ping();
+    return {
+      healthy: true,
+      latencyMs: Date.now() - start,
+    };
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    return {
+      healthy: false,
+      error: err.message,
+    };
+  }
+}
+
+// Initialize connection on module load (non-blocking)
+initializeRedis().catch((error) => {
+  console.error('[Redis] Initial connection failed, will retry on first use:', error.message);
+});
+
+// Getter for backward compatibility with existing code
+function getRedis(): RedisClient {
+  const client = getRedisClient();
+  if (!client) {
+    throw new Error('Redis not available');
+  }
+  return client;
+}
 
 // ============================================
 // CONSTANTS
@@ -162,14 +404,30 @@ export class AttributionTracker {
   /**
    * Track an attribution event
    * Stores in Redis with TTL for window management
+   * Gracefully degrades when Redis is unavailable
    */
   async trackEvent(event: AttributionEvent): Promise<{
     success: boolean;
     eventId: string;
     error?: string;
   }> {
+    const eventId = `${event.userId}:${event.campaignId}:${Date.now()}:${event.event}`;
+
+    // Check Redis availability first
+    if (!isRedisAvailable()) {
+      // Try to reconnect
+      await initializeRedis();
+      if (!isRedisAvailable()) {
+        logRedisError('trackEvent', connectionState.lastError || new Error('Redis unavailable'), { eventId });
+        return {
+          success: false,
+          eventId: '',
+          error: 'Redis unavailable - event tracking disabled',
+        };
+      }
+    }
+
     try {
-      const eventId = `${event.userId}:${event.campaignId}:${Date.now()}:${event.event}`;
       const key = eventKey(event.userId, event.campaignId, eventId);
       const userCampaignListKey = userCampaignKey(event.userId, event.campaignId);
 
@@ -180,8 +438,10 @@ export class AttributionTracker {
         timestamp: event.timestamp.toISOString()
       };
 
-      // Store event with TTL
       const ttl = this.calculateTTL();
+      const redis = getRedis();
+
+      // Store event with TTL
       await redis.setex(key, ttl, JSON.stringify(eventData));
 
       // Add to user's campaign event list (sorted by timestamp)
@@ -192,24 +452,32 @@ export class AttributionTracker {
       );
       await redis.expire(userCampaignListKey, ttl);
 
-      // Update campaign stats
-      await this.updateCampaignStats(event.campaignId, event);
+      // Update campaign stats (fire-and-forget with error handling)
+      this.updateCampaignStats(event.campaignId, event).catch((err) => {
+        logRedisError('updateCampaignStats', err, { campaignId: event.campaignId });
+      });
 
-      // Update funnel tracking
-      await this.updateFunnelStats(event.userId, event);
+      // Update funnel tracking (fire-and-forget with error handling)
+      this.updateFunnelStats(event.userId, event).catch((err) => {
+        logRedisError('updateFunnelStats', err, { userId: event.userId });
+      });
 
-      // Track window for conversion tracking
-      await this.trackAttributionWindow(event.userId, event.campaignId);
+      // Track window for conversion tracking (fire-and-forget with error handling)
+      this.trackAttributionWindow(event.userId, event.campaignId).catch((err) => {
+        logRedisError('trackAttributionWindow', err, { userId: event.userId, campaignId: event.campaignId });
+      });
 
       return {
         success: true,
-        eventId
+        eventId,
       };
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logRedisError('trackEvent', err, { eventId });
       return {
         success: false,
         eventId: '',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: err.message,
       };
     }
   }
@@ -382,6 +650,7 @@ export class AttributionTracker {
 
   /**
    * Get all events for a user within the attribution window
+   * Gracefully returns empty array when Redis is unavailable
    */
   async getUserEventsInWindow(
     userId: string,
@@ -391,31 +660,58 @@ export class AttributionTracker {
     const window = windowDays || DEFAULT_WINDOW_DAYS;
     const cutoffTime = Date.now() - (window * 24 * 60 * 60 * 1000);
 
+    // Check Redis availability
+    if (!isRedisAvailable()) {
+      await initializeRedis();
+      if (!isRedisAvailable()) {
+        logRedisError('getUserEventsInWindow', connectionState.lastError || new Error('Redis unavailable'), { userId, campaignId });
+        return []; // Graceful degradation - return empty instead of throwing
+      }
+    }
+
     let keys: string[];
-    if (campaignId) {
-      // Get events for specific campaign
-      keys = [`${REDIS_PREFIX}user:${userId}:campaign:${campaignId}:events`];
-    } else {
-      // Get all campaigns for user (scan for pattern)
-      keys = await this.getUserCampaignKeys(userId);
+    try {
+      if (campaignId) {
+        // Get events for specific campaign
+        keys = [`${REDIS_PREFIX}user:${userId}:campaign:${campaignId}:events`];
+      } else {
+        // Get all campaigns for user (scan for pattern)
+        keys = await this.getUserCampaignKeys(userId);
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logRedisError('getUserCampaignKeys', err, { userId, campaignId });
+      return [];
     }
 
     const events: AttributionEvent[] = [];
 
     for (const key of keys) {
-      const eventIds = await redis.zrangebyscore(key, cutoffTime, '+inf');
+      const { result: eventIds, error } = await executeRedisCommand(
+        'zrangebyscore',
+        () => getRedis().zrangebyscore(key, cutoffTime, '+inf'),
+        []
+      );
+
+      if (error || !eventIds) continue;
 
       for (const eventId of eventIds) {
-        const [uid, cid, , eventType] = eventId.split(':');
-        const eventKey = `${REDIS_PREFIX}events:${uid}:${cid}:${eventId}`;
-        const eventData = await redis.get(eventKey);
+        const { result: eventData, error: getError } = await executeRedisCommand(
+          'get',
+          () => getRedis().get(`${REDIS_PREFIX}events:${eventId}`),
+          null
+        );
 
-        if (eventData) {
+        if (getError || !eventData) continue;
+
+        try {
           const parsed = JSON.parse(eventData);
           events.push({
             ...parsed,
             timestamp: new Date(parsed.timestamp)
           });
+        } catch (parseError) {
+          logRedisError('JSON.parse', parseError instanceof Error ? parseError : new Error(String(parseError)), { eventData });
         }
       }
     }
