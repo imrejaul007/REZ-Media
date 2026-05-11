@@ -1,0 +1,75 @@
+# Render.com Blueprints - REZ Communications Platform
+
+services:
+  - type: web
+    name: rez-communications-platform
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: LOG_LEVEL
+        value: info
+
+      # Email (SendGrid)
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: noreply@rez.io
+      - key: EMAIL_FROM_NAME
+        value: REZ
+
+      # SMS (Twilio)
+      - key: SMS_PROVIDER
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+
+      # WhatsApp (Twilio)
+      - key: WHATSAPP_PROVIDER
+        sync: false
+      - key: WHATSAPP_FROM_NUMBER
+        sync: false
+
+      # Push Notifications (Firebase)
+      - key: PUSH_PROVIDER
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        value: /etc/secrets/firebase-service-account.json
+
+      # Redis (Queue)
+      - key: REDIS_HOST
+        fromDatabase:
+          engine: redis
+          name: rez-communications-queue
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          engine: redis
+          name: rez-communications-queue
+          property: port
+      - key: REDIS_PASSWORD
+        fromDatabase:
+          engine: redis
+          name: rez-communications-queue
+          property: password
+
+databases:
+  - name: rez-communications-queue
+    engine: redis
+    ipAllowList: []  # Allow all IPs
+    plan: starter

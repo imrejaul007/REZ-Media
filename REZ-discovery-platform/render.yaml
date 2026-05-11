@@ -1,0 +1,71 @@
+# Render Blueprint for REZ Discovery Platform
+# Deploys the semantic search and recommendation blending service
+
+services:
+  - type: web
+    name: rez-discovery-platform
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+
+    # Scaling configuration
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 70
+      targetCPUPercent: 80
+
+    # Health check configuration
+    healthCheck:
+      enabled: true
+      interval: 30
+      timeout: 10
+      threshold: 3
+
+# Background worker for analytics (optional)
+# workers:
+#   - name: rez-discovery-analytics
+#     env: node
+#     region: oregon
+#     plan: starter
+#     buildCommand: npm install && npm run build:analytics
+#     startCommand: npm run start:analytics
+#     runtime: bgworker
+#     schedule: "*/5 * * * *"
+#     envVars:
+#       - key: NODE_ENV
+#         value: production
+
+# Add-ons
+addons:
+  - name: rez-discovery-redis
+    plan: starter
+    databaseName: discovery_cache
+    ipAllowList: []
+
+# Database connection (if using PostgreSQL)
+# databases:
+#   - name: rez-discovery-db
+#     plan: starter
+#     databaseName: discovery_platform
+#     ipAllowList: []
+
+# Cron jobs
+# crons:
+#   - name: cleanup-expired-data
+#     schedule: "0 2 * * *"
+#     command: npm run cleanup
+#     regions:
+#       - oregon
