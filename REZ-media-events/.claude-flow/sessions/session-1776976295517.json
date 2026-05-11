@@ -1,0 +1,14 @@
+{
+  "id": "session-1776976295517",
+  "startedAt": "2026-04-23T20:31:35.517Z",
+  "cwd": "/Users/rejaulkarim/Documents/ReZ Full App/rez-media-events",
+  "context": {},
+  "metrics": {
+    "edits": 0,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-04-23T20:33:48.882Z",
+  "duration": 133366
+}

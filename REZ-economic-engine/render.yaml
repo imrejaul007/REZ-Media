@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: rez-economic-engine
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3003"
+      # DATABASE
+      - key: MONGODB_URI
+        sync: false
+      # CACHE
+      - key: REDIS_URL
+        sync: false
+      # AUTH
+      - key: JWT_SECRET
+        sync: false
+        # Generate: openssl rand -hex 64
+      # SECURITY
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      # CORS
+      - key: CORS_ORIGIN
+        sync: false
+      # RATE LIMITING
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      # OBSERVABILITY
+      - key: SENTRY_DSN
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: rez-economic-engine
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        fromGroup: otlp-endpoint
+        sync: false

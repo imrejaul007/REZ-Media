@@ -1,0 +1,79 @@
+name: REZ Karma Service CI
+
+on:
+  push:
+    paths:
+      - 'rez-karma-service/**'
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - 'rez-karma-service/**'
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: ci-jwt-secret-minimum-32-characters-long
+      INTERNAL_SERVICE_TOKEN: ci-internal-service-token
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - '27017:27017'
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - '6379:6379'
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rez-karma-service/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rez-karma-service
+        run: npm ci
+
+      - name: Type check / lint
+        working-directory: rez-karma-service
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: rez-karma-service
+        run: npm test -- --passWithNoTests
+        env:
+          MONGODB_URI: mongodb://localhost:27017/rez_karma_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Build
+        working-directory: rez-karma-service
+        run: npm run build
+
+      - name: Security audit
+        working-directory: rez-karma-service
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Docker build (validate Dockerfile)
+        working-directory: rez-karma-service
+        run: docker build -t rez-karma-service:ci .
+        continue-on-error: true

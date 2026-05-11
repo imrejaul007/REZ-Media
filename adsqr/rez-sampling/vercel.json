@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/process-coin-credits",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

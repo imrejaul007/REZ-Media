@@ -1,0 +1,87 @@
+name: Backup Integrity Check
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 3:00 AM UTC daily
+  workflow_dispatch:       # Allow manual runs
+
+jobs:
+  verify-backup:
+    name: Verify MongoDB Backup Integrity
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rezbackend/rez-backend-master/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: rezbackend/rez-backend-master
+
+      - name: Run backup verification
+        id: verify
+        run: npx ts-node src/scripts/verifyBackup.ts 2>&1 | tee /tmp/backup-verify-output.txt
+        working-directory: rezbackend/rez-backend-master
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_PROD }}
+          DB_NAME: rez-app
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-verification-report-${{ github.run_id }}
+          path: /tmp/backup-verify-output.txt
+          retention-days: 30
+
+      - name: Create GitHub issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let output = '';
+            try {
+              output = fs.readFileSync('/tmp/backup-verify-output.txt', 'utf8');
+            } catch (e) {
+              output = 'Could not read verification output.';
+            }
+
+            // Truncate output to stay within GitHub issue body limits
+            const maxLen = 60000;
+            const truncated = output.length > maxLen
+              ? output.slice(0, maxLen) + '\n\n...(truncated)'
+              : output;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `ALERT: Backup integrity check failed [${new Date().toISOString().split('T')[0]}]`,
+              body: [
+                '## Backup Integrity Check Failed',
+                '',
+                `**Workflow run:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                `**Date:** ${new Date().toISOString()}`,
+                `**Triggered by:** ${context.eventName}`,
+                '',
+                '## Verification Output',
+                '```',
+                truncated,
+                '```',
+                '',
+                '## Next Steps',
+                '1. Check the [workflow run](' +
+                  `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` +
+                  ') for full logs.',
+                '2. Review MongoDB Atlas backup status.',
+                '3. Check if the `ledgerentries` collection has recent data.',
+                '4. Verify wallet-ledger balance integrity manually.',
+                '5. Escalate to the platform team if data is missing.',
+              ].join('\n'),
+              labels: ['critical', 'backup', 'infrastructure'],
+            });

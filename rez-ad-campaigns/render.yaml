@@ -1,0 +1,32 @@
+# render.yaml for rez-ad-campaigns
+# Merchant self-serve ads, admin review, consumer ad serving
+services:
+  - type: web
+    name: rez-ad-campaigns
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4007"
+      - key: ADS_MONGO_URI
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SERVICE_VERSION
+        value: "1.0.0"

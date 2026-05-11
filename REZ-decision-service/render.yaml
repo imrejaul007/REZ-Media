@@ -1,0 +1,143 @@
+# ============================================
+# rez-decision-service Render Configuration
+# Phase 3-5 Deployment
+# ============================================
+
+services:
+  # ==========================================
+  # Decision Service (Main API)
+  # ==========================================
+  - type: web
+    name: rez-decision-service
+    env: docker
+    region: oregon
+    plan: starter
+
+    # Build configuration
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # Port configuration
+    numInstances: 2
+    port: 4027
+
+    # Health check
+    healthCheckPath: /health
+
+    # Environment variables
+    envVars:
+      # Core
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4027
+
+      # Redis (using Render Redis)
+      - key: REDIS_URL
+        fromDatabase:
+          name: rez-redis
+          property: connectionString
+
+      # Phase 3-5 Engine Flags
+      - key: SAMPLING_ENGINE_ENABLED
+        value: "true"
+      - key: ATTRIBUTION_ENGINE_ENABLED
+        value: "true"
+      - key: DYNAMIC_PRICING_ENABLED
+        value: "true"
+      - key: AUTO_CAMPAIGN_ENABLED
+        value: "true"
+      - key: SMART_COIN_ALLOCATION_ENABLED
+        value: "true"
+      - key: AUTO_COIN_DISTRIBUTION_ENABLED
+        value: "true"
+      - key: MERCHANT_COIN_ANALYTICS_ENABLED
+        value: "true"
+      - key: DOOH_ANALYTICS_ENABLED
+        value: "true"
+
+      # Performance tuning
+      - key: REDIS_MAX_CONNECTIONS
+        value: "50"
+      - key: REQUEST_TIMEOUT_MS
+        value: "30000"
+
+      # Logging
+      - key: LOG_LEVEL
+        value: info
+
+      # CORS origins
+      - key: CORS_ORIGINS
+        value: "https://rez-app.com,https://admin.rez-app.com"
+
+      # Rate limiting
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "60000"
+
+      # Circuit breaker
+      - key: CIRCUIT_BREAKER_ENABLED
+        value: "true"
+      - key: CIRCUIT_BREAKER_TIMEOUT_MS
+        value: "5000"
+
+    # Auto-scaling
+    autoScaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCPUPercent: 70
+      targetMemoryPercent: 80
+
+    # Startup behavior
+    startupCommand: node dist/index.js
+
+  # ==========================================
+  # Redis Cache (Managed)
+  # ==========================================
+databases:
+  - name: rez-redis
+    plan: starter
+    databaseName: decision_service_cache
+    ipAllowList: []  # Allow all connections from Render
+
+# ==========================================
+# Environment Groups (for different stages)
+# ==========================================
+environmentGroups:
+  - name: decision-service-production
+    envVars:
+      - key: LOG_LEVEL
+        value: warn
+      - key: ENABLE_DEBUG_ENDPOINTS
+        value: "false"
+      - key: CIRCUIT_BREAKER_ENABLED
+        value: "true"
+
+  - name: decision-service-staging
+    envVars:
+      - key: LOG_LEVEL
+        value: debug
+      - key: ENABLE_DEBUG_ENDPOINTS
+        value: "true"
+      - key: CIRCUIT_BREAKER_ENABLED
+        value: "false"
+
+# ==========================================
+# Cron Jobs (for background processing)
+# ==========================================
+scheduledTasks:
+  - name: cleanup-expired-coins
+    schedule: "0 */6 * * *"  # Every 6 hours
+    command: "node dist/jobs/cleanupExpiredCoins.js"
+    region: oregon
+
+  - name: aggregate-analytics
+    schedule: "0 */1 * * *"  # Every hour
+    command: "node dist/jobs/aggregateAnalytics.js"
+    region: oregon
+
+  - name: campaign-budget-check
+    schedule: "*/15 * * * *"  # Every 15 minutes
+    command: "node dist/jobs/checkCampaignBudgets.js"
+    region: oregon

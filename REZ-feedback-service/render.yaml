@@ -1,0 +1,40 @@
+# render.yaml — Feedback Service
+# Deploy: render blueprint create (CLI) or push to GitHub + link on Render dashboard
+#
+# REQUIRED — set in Render dashboard > Service > Environment (not in this file):
+#   MONGODB_URI              — MongoDB Atlas cluster for feedback data
+#   EVENT_PLATFORM_URL       — Event platform URL for analytics integration
+
+services:
+  - type: web
+    name: rez-feedback-service
+    env: node
+    region: singapore
+    plan: free
+    nodeVersion: '20'
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health/live
+    healthCheckInterval: 30
+    healthCheckThreshold: 3
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '4010'
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: EVENT_PLATFORM_URL
+        value: https://rez-event-platform.onrender.com
+      - key: CORS_ORIGIN
+        value: 'https://rez.money,https://app.rez.money,https://admin.rez.money'
+      - key: RATE_LIMIT_WINDOW_MS
+        value: '900000'
+      - key: RATE_LIMIT_MAX
+        value: '100'
+      - key: SENTRY_DSN
+        sync: false

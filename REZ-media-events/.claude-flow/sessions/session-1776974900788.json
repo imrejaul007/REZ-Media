@@ -1,0 +1,23 @@
+{
+  "id": "session-1776974900788",
+  "startedAt": "2026-04-23T20:08:20.788Z",
+  "cwd": "/Users/rejaulkarim/Documents/ReZ Full App/rez-media-events",
+  "context": {
+    "lastMatchedPatterns": [
+      "mem-project_vesper-architecture--8-agents--featur",
+      "mem-project_sprint1_migrations-bug-doc-accuracy-audit--sessio",
+      "mem-CONSUMER_APP_AUDIT_2026_04_18-what-s-working-well",
+      "mem-project_rezapp-rez-consumer-app--nuqta-master",
+      "mem-CONSUMER_APP_AUDIT_2026_04_18-medium-priority"
+    ]
+  },
+  "metrics": {
+    "edits": 0,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "updatedAt": "2026-04-23T20:18:22.230Z",
+  "endedAt": "2026-04-23T20:23:59.733Z",
+  "duration": 938947
+}

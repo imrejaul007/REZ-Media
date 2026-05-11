@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: rez-dooh-service
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3002"
+      # SECURITY
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      # CORS
+      - key: CORS_ORIGIN
+        sync: false
+      # OBSERVABILITY
+      - key: OTEL_SERVICE_NAME
+        value: rez-dooh-service
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        fromGroup: otlp-endpoint
+        sync: false

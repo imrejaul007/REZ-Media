@@ -1,0 +1,136 @@
+name: Deploy Backend Services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rezbackend/**'
+      - 'rez-auth-service/**'
+      - 'rez-wallet-service/**'
+      - 'rez-payment-service/**'
+      - 'rez-order-service/**'
+      - 'rez-merchant-service/**'
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - monolith
+          - auth-service
+          - wallet-service
+          - payment-service
+          - order-service
+          - merchant-service
+
+env:
+  RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+
+jobs:
+  deploy-monolith:
+    name: Deploy Monolith
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'monolith' || github.event.inputs.service == ''
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for monolith..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_MONOLITH_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  deploy-auth-service:
+    name: Deploy Auth Service
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'auth-service'
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for auth-service..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_AUTH_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  deploy-wallet-service:
+    name: Deploy Wallet Service
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'wallet-service'
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for wallet-service..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_WALLET_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  deploy-payment-service:
+    name: Deploy Payment Service
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'payment-service'
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for payment-service..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_PAYMENT_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  deploy-order-service:
+    name: Deploy Order Service
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'order-service'
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for order-service..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_ORDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  deploy-merchant-service:
+    name: Deploy Merchant Service
+    runs-on: ubuntu-latest
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'merchant-service'
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering Render deploy for merchant-service..."
+          curl -X POST "https://api.render.com/v1/services/${{ vars.RENDER_MERCHANT_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+        continue-on-error: true
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-monolith]
+    if: always()
+    steps:
+      - name: Check monolith health
+        run: |
+          sleep 30
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://rez.money/api/health" || echo "000")
+          if [ "$HTTP_CODE" == "200" ]; then
+            echo "✅ Health check passed (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️  Health check returned HTTP $HTTP_CODE"
+          fi

@@ -1,0 +1,55 @@
+# render.yaml — ReZ Lead Intelligence Service
+# Lead Intelligence Service - Hot/Warm/Cold lead detection and re-engagement
+#
+# Deploy: render blueprint create (CLI) or push to GitHub + link on Render dashboard
+#
+# REQUIRED — set in Render dashboard > Service > Environment:
+#   MONGODB_URI              — MongoDB Atlas cluster
+#   REDIS_URL                — Redis instance for caching
+#   INTERNAL_SERVICE_TOKENS_JSON — JSON array of service tokens
+#   SENTRY_DSN               — Sentry monitoring (optional)
+
+services:
+  - type: web
+    name: rez-lead-intelligence
+    env: node
+    region: singapore
+    plan: free
+    nodeVersion: '20'
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /api/v1/health
+    healthCheckInterval: 30
+    healthCheckThreshold: 3
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '4010'
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      # AI Configuration (for future Claude/OpenAI integration)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Lead Scoring Configuration
+      - key: HOT_LEAD_THRESHOLD
+        value: '80'
+      - key: WARM_LEAD_THRESHOLD
+        value: '50'
+      - key: COLD_LEAD_THRESHOLD
+        value: '20'
+      # Cron Schedule Settings
+      - key: HOT_LEADS_CRON
+        value: '0 * * * *'
+      - key: MARKETING_SYNC_CRON
+        value: '5 * * * *'
+      - key: ABANDONED_CARTS_CRON
+        value: '0 */4 * * *'

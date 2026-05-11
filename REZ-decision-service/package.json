@@ -1,0 +1,116 @@
+{
+  "name": "@rez/decision-service",
+  "version": "1.0.0",
+  "description": "Unified Targeting + Action Engine with Phase 3-5 Analytics Engines",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:debug": "node --inspect=0.0.0.0:9229 --require ts-node/register src/index.ts",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "start:prod": "NODE_ENV=production node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+
+    "docker:build": "docker build -t rez-decision-service .",
+    "docker:build:prod": "docker build -t rez-decision-service:prod --target production .",
+    "docker:run": "docker run -p 4027:4027 --env-file .env.local rez-decision-service",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:debug": "docker-compose --profile debug up -d",
+    "docker:compose:monitoring": "docker-compose --profile monitoring up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:clean": "docker-compose down -v --rmi local",
+
+    "redis:cli": "redis-cli -h localhost -p 6379",
+    "redis:monitor": "redis-cli -h localhost -p 6379 monitor",
+    "redis:info": "redis-cli -h localhost -p 6379 info",
+
+    "migrate": "node dist/jobs/migrate.js",
+    "seed": "node dist/jobs/seed.js",
+    "cleanup": "node dist/jobs/cleanup.js",
+    "aggregate": "node dist/jobs/aggregate.js",
+
+    "deploy:render": "npm run build && npm run docker:build:prod",
+    "health": "curl -s http://localhost:4027/health | jq",
+    "api:targeting": "curl -s http://localhost:4027/api/targeting/segments/test-user | jq",
+    "api:sampling": "curl -s -X POST http://localhost:4027/api/sampling/decide -H 'Content-Type: application/json' -d '{\"userId\":\"test\",\"campaignId\":\"test\"}' | jq"
+  },
+  "dependencies": {
+    "bullmq": "^5.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.0",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "mongoose": "^8.0.0",
+    "redis": "^4.6.0",
+    "uuid": "^9.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^10.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "decision-engine",
+    "targeting",
+    "sampling",
+    "attribution",
+    "analytics",
+    "dooh"
+  ],
+  "author": "ReZ Team",
+  "license": "MIT",
+  "enginesPhase3to5": {
+    "sampling": {
+      "description": "Sampling decision engine with fatigue management",
+      "routes": [
+        "/api/sampling/*"
+      ],
+      "engines": [
+        "samplingDecision",
+        "dynamicPricing",
+        "autoCampaign",
+        "smartCoinAllocation",
+        "autoCoinDistribution"
+      ]
+    },
+    "attribution": {
+      "description": "Attribution tracking and modeling",
+      "routes": [
+        "/api/attribution/*"
+      ],
+      "engines": [
+        "attribution"
+      ]
+    },
+    "analytics": {
+      "description": "Real-time analytics dashboards",
+      "routes": [
+        "/api/sampling/analytics/*",
+        "/api/merchant/*",
+        "/api/dooh/analytics/*"
+      ],
+      "engines": [
+        "samplingAnalytics",
+        "merchantCoinAnalytics",
+        "doohAnalytics"
+      ]
+    }
+  }
+}

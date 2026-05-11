@@ -1,0 +1,41 @@
+name: Consumer App CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'rezapp/rez-master/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'rezapp/rez-master/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rezapp/rez-master
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rezapp/rez-master/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit --project tsconfig.check.json || npx tsc --noEmit
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests --ci --forceExit
+        env:
+          NODE_ENV: test
+          CI: true

@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  brandId    String
+  name        String
+  status      String   @default("draft")
+  budget      Int
+  spent       Int      @default(0)
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+
+  brand      Brand @relation(fields: [brandId], references: [id])
+  scans      CampaignScan[]
+  qrCodes    QrCode[]
+  rewards    CampaignReward[]
+  @@map("campaigns")
+}
+
+model Brand {
+  id        String @id @default(uuid())
+  name      String
+  slug      String @unique
+  logo      String?
+  isActive   Boolean @default(true)
+
+  campaigns Campaign[]
+  @@map("brands")
+}
+
+model QrCode {
+  id         String @id @default(uuid())
+  campaignId String
+  code       String @unique
+  location   Json?  // { lat, lng, city }
+  scanned    Boolean @default(false)
+  scannedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  scans      CampaignScan[]
+  @@map("qr_codes")
+}
+
+model CampaignScan {
+  id          String   @id @default(uuid())
+  qrCodeId   String
+  campaignId String
+  userId     String?
+  deviceId   String?
+  location   Json?   // { lat, lng }
+  ipAddress  String?
+  attributed  Boolean @default(false)
+  attributedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  qrCode    QrCode @relation(fields: [qrCodeId], references: [id])
+  campaign  Campaign @relation(fields: [campaignId], references: [id])
+  @@map("campaign_scans")
+}
+
+model CampaignReward {
+  id         String @id @default(uuid())
+  campaignId String
+  userId     String
+  amount     Int
+  claimed    Boolean @default(false)
+  claimedAt  DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id])
+  @@map("campaign_rewards")
+}
+
+model FraudCheck {
+  id          String @id @default(uuid())
+  scanId     String
+  deviceId   String?
+  ipAddress  String?
+  riskScore  Decimal @default(0)
+  checks     Json?  // { vpn, geo, velocity }
+  status     String @default("pass")
+  createdAt  DateTime @default(now())
+
+  @@map("fraud_checks")
+}
+
+model BrandCoin {
+  id           String @id @default(uuid())
+  brandId     String
+  name         String  // "FitFuel Coins"
+  symbol       String  // "FFC"
+  valuePerCoin Decimal @default(0.01)
+  totalSupply  Int?
+  expiryDays   Int     @default(365)
+  isActive     Boolean @default(true)
+
+  @@map("brand_coins")
+}

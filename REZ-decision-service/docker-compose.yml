@@ -1,0 +1,206 @@
+# ============================================
+# rez-decision-service Docker Compose
+# Local Development Environment
+# Phase 3-5 Engines
+# ============================================
+
+services:
+  # ==========================================
+  # Decision Service API
+  # ==========================================
+  decision-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: rez-decision-service
+    image: rez-decision-service:dev
+    ports:
+      - "4027:4027"
+    environment:
+      # Core
+      - NODE_ENV=development
+      - PORT=4027
+
+      # Redis
+      - REDIS_URL=redis://redis:6379
+
+      # Phase 3-5 Engine Flags (all enabled for development)
+      - SAMPLING_ENGINE_ENABLED=true
+      - ATTRIBUTION_ENGINE_ENABLED=true
+      - DYNAMIC_PRICING_ENABLED=true
+      - AUTO_CAMPAIGN_ENABLED=true
+      - SMART_COIN_ALLOCATION_ENABLED=true
+      - AUTO_COIN_DISTRIBUTION_ENABLED=true
+      - MERCHANT_COIN_ANALYTICS_ENABLED=true
+      - DOOH_ANALYTICS_ENABLED=true
+
+      # Development Settings
+      - LOG_LEVEL=debug
+      - ENABLE_DEBUG_ENDPOINTS=true
+
+      # Performance
+      - REDIS_MAX_CONNECTIONS=10
+      - REQUEST_TIMEOUT_MS=30000
+
+      # CORS
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+      # Rate Limiting (relaxed for dev)
+      - RATE_LIMIT_MAX=1000
+      - RATE_LIMIT_WINDOW_MS=60000
+
+      # Circuit Breaker (disabled for dev)
+      - CIRCUIT_BREAKER_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount source for hot reload
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+    networks:
+      - rez-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4027/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================
+  # Redis Cache
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: rez-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    networks:
+      - rez-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ==========================================
+  # Redis Commander (Optional - for debugging)
+  # ==========================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: rez-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - rez-network
+    profiles:
+      - debug
+    restart: unless-stopped
+
+  # ==========================================
+  # Prometheus (Optional - for metrics)
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rez-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - rez-network
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # ==========================================
+  # Grafana (Optional - for dashboards)
+  # ==========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rez-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - rez-network
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  rez-network:
+    driver: bridge
+    name: rez-decision-network
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  redis-data:
+    name: rez-redis-data
+  prometheus-data:
+    name: rez-prometheus-data
+  grafana-data:
+    name: rez-grafana-data
+
+# ==========================================
+# Usage Instructions
+# ==========================================
+# Development:
+#   docker-compose up -d
+#
+# Development with debug tools:
+#   docker-compose --profile debug up -d
+#
+# Development with monitoring:
+#   docker-compose --profile monitoring up -d
+#
+# All tools:
+#   docker-compose --profile debug --profile monitoring up -d
+#
+# View logs:
+#   docker-compose logs -f decision-service
+#
+# Scale service:
+#   docker-compose up -d --scale decision-service=3
+#
+# Stop services:
+#   docker-compose down
+#
+# Stop and remove volumes:
+#   docker-compose down -v

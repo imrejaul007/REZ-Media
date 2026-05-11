@@ -1,0 +1,49 @@
+/* AdsQr MVP - Phase 1 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ACCESSIBILITY FIXES - Focus Indicators and Keyboard Navigation */
+/* WCAG 2.1 Level AA: Focus indicators must be visible */
+
+/* Global focus indicator - visible focus ring */
+*:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Remove outline on click but keep for keyboard navigation */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Show visible focus for keyboard users */
+*:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+/* Interactive elements focus states */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="radio"]:focus-visible,
+[role="switch"]:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+/* High contrast focus for reduced motion preference */
+@media (prefers-contrast: high) {
+  *:focus {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,97 @@
+name: Gamification Service CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'fix/**']
+    paths: ['rez-gamification-service/**', 'rez-shared/**']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: rez-gamification-service/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: rez-gamification-service
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: rez-gamification-service
+        continue-on-error: true
+      - name: Lint
+        run: npm run lint
+        working-directory: rez-gamification-service
+        continue-on-error: true
+      - name: Run tests
+        run: npm test -- --forceExit --passWithNoTests
+        working-directory: rez-gamification-service
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/rez-test-gamification
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-jwt-secret-min-32-characters-long
+          JWT_ADMIN_SECRET: ci-jwt-admin-secret-32chars-long
+          INTERNAL_SERVICE_TOKEN: ci-internal-service-token
+          WALLET_SERVICE_URL: http://localhost:3003
+          OTEL_ENABLED: 'false'
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gamification-coverage
+          path: rez-gamification-service/coverage/
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: rez-gamification-service/package-lock.json
+      - name: Install and build
+        run: npm ci && npm run build
+        working-directory: rez-gamification-service
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+        working-directory: rez-gamification-service
+        continue-on-error: true

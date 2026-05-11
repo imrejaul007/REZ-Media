@@ -1,0 +1,9 @@
+.next
+node_modules/@next/swc-darwin-arm64
+.next
+node_modules
+
+# Environment files (NEVER commit these)
+.env
+.env.local
+.env.*.local

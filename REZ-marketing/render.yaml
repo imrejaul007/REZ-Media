@@ -1,0 +1,184 @@
+# render.yaml - Render deployment configuration for REZ Marketing Platform
+# Docs: https://render.com/docs/yaml-spec
+# Version: 2024-01
+
+services:
+  # ──────────────────────────────────────────────────────────────
+  # Main Application Service
+  # ──────────────────────────────────────────────────────────────
+  - type: web
+    name: rez-marketing
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: pro
+    region: singapore  # ap-southeast-1 - closest to target users
+    autoDeploy: true
+    github:
+      branch: main
+      deployPreviewPullRequests: true
+      deployCommitURL: https://github.com/ruvnet/rez/commit/$COMMIT_SHA
+    envVars:
+      # ── Application ──────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        sync: false  # Set via Render dashboard for multiple origins
+
+      # ── Database ─────────────────────────────────────────────
+      - key: MONGODB_URI
+        sync: false  # Required: Set via Render dashboard
+
+      # ── Redis ─────────────────────────────────────────────────
+      - key: REDIS_URL
+        sync: false  # Required: Set via Render dashboard
+
+      # ── Service Authentication ────────────────────────────────
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+
+      # ── Sentry Error Tracking ─────────────────────────────────
+      - key: SENTRY_DSN
+        sync: false
+
+      # ── Twilio SMS ───────────────────────────────────────────
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+
+      # ── WhatsApp Business API ─────────────────────────────────
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_ID
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+
+      # ── AWS SES Email ─────────────────────────────────────────
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_SES_SMTP_USER
+        sync: false
+      - key: AWS_SES_SMTP_PASS
+        sync: false
+      - key: SES_REGION
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+      # ── SMTP Alternative ──────────────────────────────────────
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: '587'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+      # ── Push Notifications ─────────────────────────────────────
+      - key: FCM_SERVER_KEY
+        sync: false
+
+      # ── Payment - Razorpay ────────────────────────────────────
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+      # ── AdBazaar Integration ──────────────────────────────────
+      - key: ADBAZAAR_INTERNAL_KEY
+        sync: false
+
+      # ── Intent Capture ────────────────────────────────────────
+      - key: INTENT_CAPTURE_URL
+        sync: false
+
+      # ── Service URL ───────────────────────────────────────────
+      - key: MARKETING_SERVICE_URL
+        sync: false
+
+      # ── Frontend URL ──────────────────────────────────────────
+      - key: FRONTEND_URL
+        value: https://app.rez.money
+
+    healthCheck:
+      path: /healthz
+      interval: 30s
+      timeout: 10s
+      failureThreshold: 3
+    scaled:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 70
+      targetCPUPercent: 80
+    headers:
+      - path: /*
+        name: Security Headers
+        value: |
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+          X-XSS-Protection: 1; mode=block
+          Referrer-Policy: strict-origin-when-cross-origin
+          Permissions-Policy: camera=(), microphone=(), geolocation=()
+          Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  # ──────────────────────────────────────────────────────────────
+  # Redis Addon (Render-managed)
+  # ──────────────────────────────────────────────────────────────
+  - type: redis
+    name: rez-marketing-redis
+    plan: starter
+    region: singapore
+    ipAllowList: []
+    redisVersion: '7.9'
+    maxmemoryPolicy: allkeys-lru
+    # Connection string auto-injected as REDIS_URL
+
+# ─────────────────────────────────────────────────────────────────
+# Cron Jobs (optional - for scheduled tasks like interest sync)
+# ─────────────────────────────────────────────────────────────────
+# cron:
+#   - name: interest-sync
+#     schedule: "0 */6 * * *"
+#     command: "curl -f https://rez-marketing.onrender.com/internal/interest-sync"
+#     regions:
+#       - singapore
+
+# ─────────────────────────────────────────────────────────────────
+# Deployment Hooks
+# ─────────────────────────────────────────────────────────────────
+preDeployHook: ./scripts/pre-deploy.sh
+postDeployHook: ./scripts/post-deploy.sh
+
+# ─────────────────────────────────────────────────────────────────
+# Notes for Production Deployment:
+# ─────────────────────────────────────────────────────────────────
+# 1. MongoDB: Use MongoDB Atlas (M10+ for production)
+#    - Enable VPC Peering or Private Endpoint
+#    - Configure IP whitelist
+#
+# 2. Redis: Render Redis addon (starter for dev, pro for HA)
+#
+# 3. Environment Variables: Set all sync:false vars via Dashboard
+#    - NEVER commit real credentials to version control
+#
+# 4. Scaling: Min 1 instance for zero-downtime, max 3 for cost
+#
+# 5. Health Endpoints:
+#    - /healthz: Simple liveness check
+#    - /health: Detailed health with DB/Redis status
+#    - /metrics: Prometheus metrics

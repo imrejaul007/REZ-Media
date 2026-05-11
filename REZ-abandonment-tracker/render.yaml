@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: rez-abandonment-tracker
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4108
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REZMIND_URL
+        sync: false
+      - key: LEAD_INTELLIGENCE_URL
+        sync: false
+      - key: MARKETING_URL
+        sync: false

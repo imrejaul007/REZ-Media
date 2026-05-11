@@ -1,0 +1,47 @@
+name: Web Menu CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'rez-web-menu/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'rez-web-menu/**'
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rez-web-menu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rez-web-menu/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: https://api.rezapp.com/api

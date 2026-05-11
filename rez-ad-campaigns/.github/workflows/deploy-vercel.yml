@@ -1,0 +1,106 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app:
+          - name: rez-merchant
+            path: rezmerchant
+            project-id: ${{ vars.VERCEL_MERCHANT_PROJECT_ID }}
+          - name: rez-admin
+            path: rezadmin
+            project-id: ${{ vars.VERCEL_ADMIN_PROJECT_ID }}
+          - name: rez-web-menu
+            path: rez-web-menu
+            project-id: ${{ vars.VERCEL_WEB_MENU_PROJECT_ID }}
+          - name: rez-now
+            path: rez-now
+            project-id: ${{ vars.VERCEL_NOW_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        if: github.event.inputs.environment != 'preview'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ matrix.app.project-id }}
+          working-directory: ${{ matrix.app.path }}
+          vercel-args: '--prod=true'
+        continue-on-error: true
+
+      - name: Deploy preview
+        if: github.event.inputs.environment == 'preview'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ matrix.app.project-id }}
+          working-directory: ${{ matrix.app.path }}
+          vercel-args: '--prod=false'
+        continue-on-error: true
+
+  deploy-consumer-app:
+    name: Deploy Consumer App (Web)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rez-app-consumer/package-lock.json
+
+      - name: Install and build
+        run: npm ci && npm run build:render
+        working-directory: rez-app-consumer
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ vars.VERCEL_CONSUMER_PROJECT_ID }}
+          working-directory: rez-app-consumer
+          vercel-args: '--prod=true'
+        continue-on-error: true
+
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-consumer-app]
+    if: always()
+    steps:
+      - name: Post deployment result
+        run: |
+          if [[ "${{ needs.deploy-frontend.result }}" == "success" && "${{ needs.deploy-consumer-app.result }}" == "success" ]]; then
+            echo "✅ All frontend deployments succeeded"
+          else
+            echo "⚠️  Some deployments had issues — check Vercel dashboard"
+          fi

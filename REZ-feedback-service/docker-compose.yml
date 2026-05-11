@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  feedback-service:
+    build: .
+    ports:
+      - "4010:4010"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - PORT=4010
+      - MONGODB_URI=mongodb://mongodb:27017/rez-feedback
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REZ_MIND_URL=http://localhost:4000
+      - LOG_LEVEL=debug
+    volumes:
+      - ./logs:/app/logs
+
+  feedback-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/rez-feedback
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REZ_MIND_URL=http://localhost:4000
+
+volumes:
+  mongodb_data:
+  redis_data:

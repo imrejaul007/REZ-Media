@@ -1,0 +1,57 @@
+name: REZ Wallet Service CI
+
+on:
+  push:
+    paths:
+      - 'rez-wallet-service/**'
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - 'rez-wallet-service/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rez-wallet-service
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rez-wallet-service/package-lock.json
+      - run: npm ci
+      - name: Type check / lint
+        run: npm run lint
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/rez-wallet-test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-jwt-secret-min-32-characters-long
+          INTERNAL_SERVICE_TOKEN: ci-internal-service-token
+      - name: Build
+        run: npm run build
+      - name: Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true

@@ -1,0 +1,46 @@
+name: Merchant Service CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'rez-merchant-service/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'rez-merchant-service/**'
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    env:
+      JWT_MERCHANT_SECRET: test-secret-for-ci
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rez-merchant-service/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rez-merchant-service
+        run: npm ci
+
+      - name: Lint (type-check)
+        working-directory: rez-merchant-service
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: rez-merchant-service
+        run: npm test -- --passWithNoTests
+
+      - name: Build
+        working-directory: rez-merchant-service
+        run: npm run build
