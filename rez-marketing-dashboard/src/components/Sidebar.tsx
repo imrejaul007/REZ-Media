@@ -11,12 +11,14 @@ import {
   BarChart3,
   Settings,
   HelpCircle,
+  Sparkles,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Campaigns', href: '/campaigns', icon: Megaphone },
+  { name: 'AI Campaigns', href: '/campaigns/ai', icon: Sparkles, highlight: true },
   { name: 'Broadcasts', href: '/broadcasts', icon: Radio },
   { name: 'Audiences', href: '/audiences', icon: Users },
   { name: 'Automation', href: '/automation', icon: Zap },
