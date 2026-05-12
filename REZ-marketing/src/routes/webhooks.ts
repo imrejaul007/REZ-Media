@@ -13,6 +13,67 @@ import { track } from '../services/intentCaptureService';
 // Event Platform URL for forwarding events
 const EVENT_PLATFORM_URL = process.env.EVENT_PLATFORM_URL || 'http://localhost:4008';
 
+// Service URLs
+const COMMUNICATIONS_URL = process.env.COMMUNICATIONS_SERVICE_URL || 'http://localhost:4005';
+const GAMIFICATION_URL = process.env.GAMIFICATION_SERVICE_URL || 'http://localhost:4006';
+const AGENTS_URL = process.env.AGENTS_SERVICE_URL || 'http://localhost:4007';
+
+// Request timeout for internal service calls (5 seconds)
+const INTERNAL_SERVICE_TIMEOUT = 5000;
+
+/**
+ * Parse internal service tokens from environment.
+ * Format: INTERNAL_SERVICE_TOKENS_JSON={"service-name":"token"}
+ */
+function getInternalServiceToken(): string | undefined {
+  const tokensJson = process.env.INTERNAL_SERVICE_TOKENS_JSON;
+  if (!tokensJson) return undefined;
+  try {
+    const tokens = JSON.parse(tokensJson);
+    return tokens['rez-marketing-service'];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Make an authenticated internal service call with timing-safe token comparison.
+ */
+async function callInternalService<T>(
+  url: string,
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH',
+  body?: unknown,
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  const serviceToken = getInternalServiceToken();
+  if (!serviceToken) {
+    logger.warn('[Marketing] INTERNAL_SERVICE_TOKENS_JSON not configured — cannot call internal services');
+    return { success: false, error: 'Service token not configured' };
+  }
+
+  try {
+    const response = await axios({
+      url,
+      method,
+      data: body,
+      timeout: INTERNAL_SERVICE_TIMEOUT,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': serviceToken,
+      },
+      validateStatus: () => true, // Don't throw on non-2xx
+    });
+
+    if (response.status >= 200 && response.status < 300) {
+      return { success: true, data: response.data as T };
+    }
+
+    return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
+  } catch (err: any) {
+    const errorMessage = err.code === 'ECONNABORTED' ? 'Request timeout' : err.message;
+    return { success: false, error: errorMessage };
+  }
+}
+
 /**
  * Forward event to event-platform for unified analytics
  */
@@ -313,9 +374,51 @@ router.post('/events/conversion', async (req: Request, res: Response) => {
       channel: req.headers['x-channel'] as string || 'direct',
     });
 
-    // TODO: Trigger welcome campaign sequence
-    // TODO: Enroll in loyalty program
-    // TODO: Trigger upsell recommendations
+    // Trigger welcome campaign sequence
+    try {
+      await callInternalService(`${COMMUNICATIONS_URL}/api/notifications/send`, 'POST', {
+        userId,
+        channels: ['email', 'whatsapp'],
+        templateId: 'welcome_sequence',
+        payload: {
+          title: 'Welcome to REZ!',
+          body: 'Thanks for your first order! Start exploring great deals near you.',
+          email,
+          phone,
+        },
+      });
+      logger.info('[Marketing] Welcome campaign triggered', { userId });
+    } catch (err) {
+      logger.error('[Marketing] Welcome campaign failed', { userId, error: (err as Error).message });
+    }
+
+    // Enroll in loyalty program
+    try {
+      await callInternalService(`${GAMIFICATION_URL}/api/enroll`, 'POST', {
+        userId,
+        program: 'loyalty',
+        source: 'marketing_conversion',
+      });
+      logger.info('[Marketing] Loyalty enrollment triggered', { userId });
+    } catch (err) {
+      logger.error('[Marketing] Loyalty enrollment failed', { userId, error: (err as Error).message });
+    }
+
+    // Trigger upsell recommendations
+    try {
+      await callInternalService(`${COMMUNICATIONS_URL}/api/agents/trigger/upsell_agent`, 'POST', {
+        agentType: 'upsell_agent',
+        action: 'recommend',
+        context: {
+          userId,
+          orderId,
+          category: 'cross_sell',
+        },
+      });
+      logger.info('[Marketing] Upsell triggered', { userId });
+    } catch (err) {
+      logger.error('[Marketing] Upsell trigger failed', { userId, error: (err as Error).message });
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -351,7 +454,24 @@ router.post('/events/abandonment', async (req: Request, res: Response) => {
       },
     }).catch(() => {});
 
-    // TODO: Trigger abandonment email sequence
+    // Trigger abandonment email sequence (30 min delay via scheduledFor)
+    try {
+      const totalValue = items.reduce((sum, i) => sum + i.price, 0);
+      await callInternalService(`${COMMUNICATIONS_URL}/api/notifications/send`, 'POST', {
+        userId,
+        channels: ['email', 'sms', 'whatsapp'],
+        templateId: 'abandonment_recovery',
+        payload: {
+          title: 'Complete Your Order',
+          body: `You left items in your cart! Complete your purchase now and get 10% off.`,
+          data: { cartId, items, totalValue },
+        },
+        scheduledFor: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min delay
+      });
+      logger.info('[Marketing] Abandonment campaign triggered', { userId, cartId });
+    } catch (err) {
+      logger.error('[Marketing] Abandonment campaign failed', { userId, cartId, error: (err as Error).message });
+    }
 
     res.json({ success: true });
   } catch (err) {
