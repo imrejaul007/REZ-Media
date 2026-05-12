@@ -4,7 +4,11 @@
  * Credits campaigns accurately across multi-touch user journeys
  */
 
-import Redis, { Redis as RedisClient } from 'ioredis';
+// @ts-ignore
+import Redis from 'ioredis';
+// @ts-ignore
+import type { Redis as RedisClient } from 'ioredis';
+import { redis } from '../config/redis';
 
 // ============================================
 // REDIS CONNECTION MANAGER
@@ -66,7 +70,7 @@ async function createRedisConnection(): Promise<RedisClient | null> {
       const client = new Redis(redisUrl, {
         connectTimeout: REDIS_CONFIG.connectTimeoutMs,
         commandTimeout: REDIS_CONFIG.commandTimeoutMs,
-        retryStrategy: (times) => {
+        retryStrategy: (times: number) => {
           if (times > REDIS_CONFIG.maxRetries) {
             return null; // Stop retrying
           }
@@ -92,7 +96,7 @@ async function createRedisConnection(): Promise<RedisClient | null> {
         connectionState.isConnected = true;
       });
 
-      client.on('error', (error) => {
+      client.on('error', (error: Error) => {
         logRedisError('connection', error);
         connectionState.isConnected = false;
         connectionState.lastError = error;

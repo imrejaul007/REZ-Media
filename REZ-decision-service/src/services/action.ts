@@ -100,6 +100,7 @@ interface Action {
   level: ActionLevel;
   status: ActionStatus;
   payload: Record<string, unknown>;
+  userId?: string;
   createdAt: Date;
   approvedAt?: Date;
   executedAt?: Date;

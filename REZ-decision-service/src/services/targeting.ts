@@ -1,3 +1,4 @@
+// @ts-ignore - ioredis default export compatibility
 import Redis from 'ioredis';
 import crypto from 'crypto';
 
@@ -7,7 +8,6 @@ import crypto from 'crypto';
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: 3,
-  retryDelayOnFailover: 100,
   lazyConnect: true,
   enableOfflineQueue: false,
 });
@@ -15,7 +15,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
 // Connection state tracking
 let redisAvailable = true;
 
-redis.on('error', (err) => {
+redis.on('error', (err: Error & { code?: string }) => {
   redisAvailable = false;
   console.error('[Redis] Connection error:', {
     message: err.message,

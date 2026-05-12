@@ -3,6 +3,7 @@
  * Phase 3-5 Engine Redis Setup
  */
 
+// @ts-ignore - ioredis default export compatibility
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
