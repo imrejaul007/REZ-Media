@@ -16,6 +16,15 @@ import { PushService, createPushService } from './push/push-service';
 import { TemplateEngine, createTemplateEngine } from './templates/template-engine';
 import { CampaignOrchestrator, createCampaignOrchestrator } from './orchestrator/campaign-orchestrator';
 
+// Push integration
+import { createDeviceRegistry, DeviceRegistry, SUPPORTED_APPS } from './push/deviceRegistry';
+import { createPushRouter, PushRouter } from './push/pushRouter';
+import {
+  pushTemplateEngine,
+  getSupportedTemplateTypes,
+  getTemplateMetadata
+} from './push/templates';
+
 export interface CommunicationsPlatform {
   email: EmailService;
   sms: SMSService;
@@ -23,6 +32,8 @@ export interface CommunicationsPlatform {
   push: PushService;
   templateEngine: TemplateEngine;
   campaignOrchestrator: CampaignOrchestrator;
+  deviceRegistry: DeviceRegistry;
+  pushRouter: PushRouter;
   healthCheck: () => Promise<HealthCheckResult[]>;
   destroy: () => Promise<void>;
 }
@@ -34,6 +45,8 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
   public push: PushService;
   public templateEngine: TemplateEngine;
   public campaignOrchestrator: CampaignOrchestrator;
+  public deviceRegistry: DeviceRegistry;
+  public pushRouter: PushRouter;
 
   private app: express.Application;
   private config: PlatformConfig;
@@ -57,6 +70,10 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
       this.push,
       this.templateEngine
     );
+
+    // Initialize push integration
+    this.deviceRegistry = createDeviceRegistry();
+    this.pushRouter = createPushRouter(this.deviceRegistry, this.push, config.push);
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -172,8 +189,11 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
       res.json({ results: result });
     });
 
-    // Push routes
-    this.app.post('/api/push/send', async (req: Request, res: Response) => {
+    // Push routes (using router for extended functionality)
+    this.app.use('/api/push', this.pushRouter.getRouter());
+
+    // Push convenience routes (keeping original for backward compatibility)
+    this.app.post('/api/push/send-raw', async (req: Request, res: Response) => {
       const result = await this.push.send(req.body);
       res.json(result);
     });
@@ -188,9 +208,38 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
       res.json({ results: result });
     });
 
-    this.app.post('/api/push/subscribe', async (req: Request, res: Response) => {
+    this.app.post('/api/push/subscribe-to-topic', async (req: Request, res: Response) => {
       await this.push.subscribeToTopic(req.body.tokens, req.body.topic);
       res.json({ success: true });
+    });
+
+    // Push info routes
+    this.app.get('/api/push/supported-apps', (req: Request, res: Response) => {
+      res.json({
+        apps: SUPPORTED_APPS,
+        templates: getSupportedTemplateTypes()
+      });
+    });
+
+    this.app.get('/api/push/app-templates/:appId', (req: Request, res: Response) => {
+      const { appId } = req.params;
+      const templates: Record<string, unknown> = {};
+
+      for (const type of getSupportedTemplateTypes()) {
+        const metadata = getTemplateMetadata(appId as typeof SUPPORTED_APPS[number], type);
+        if (metadata) {
+          templates[type] = {
+            title: metadata.title,
+            body: metadata.body,
+            variables: metadata.variables
+          };
+        }
+      }
+
+      res.json({
+        appId,
+        templates
+      });
     });
 
     // Template routes
@@ -259,6 +308,11 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
           sms: this.config.sms.provider,
           whatsapp: this.config.whatsapp.provider,
           push: this.config.push.provider
+        });
+        this.log.info('Push notification integration:', {
+          supportedApps: SUPPORTED_APPS,
+          templates: getSupportedTemplateTypes().length,
+          router: 'pushRouter'
         });
         resolve();
       });
@@ -347,6 +401,24 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
       });
     }
 
+    // Device registry health
+    try {
+      const registryHealth = await this.deviceRegistry.healthCheck();
+      results.push({
+        service: 'deviceRegistry',
+        healthy: registryHealth.healthy,
+        error: registryHealth.error,
+        lastChecked: new Date()
+      });
+    } catch (error) {
+      results.push({
+        service: 'deviceRegistry',
+        healthy: false,
+        error: (error as Error).message,
+        lastChecked: new Date()
+      });
+    }
+
     // Orchestrator health
     try {
       const orchestratorHealth = await this.campaignOrchestrator.healthCheck();
@@ -378,6 +450,7 @@ class CommunicationsPlatformImpl implements CommunicationsPlatform {
     }
 
     await this.campaignOrchestrator.destroy();
+    await this.deviceRegistry.destroy();
     this.log.info('Shutdown complete');
   }
 
