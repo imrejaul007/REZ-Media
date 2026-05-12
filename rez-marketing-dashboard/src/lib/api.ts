@@ -2,15 +2,17 @@
  * REZ Marketing Dashboard - API Integration
  *
  * Connects to:
- * - REZ-ads-service (Ad campaigns)
+ * - REZ-ads-service (Ad campaigns, AdBazaar)
  * - REZ-marketing (Broadcasts, segments)
  * - REZ-communications-platform (WhatsApp, SMS, Email, Push)
  * - REZ-intelligence (AI segments, recommendations)
+ * - rez-whatsapp-store (WhatsApp commerce)
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 const ADS_SERVICE = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://localhost:4007'
 const COMMUNICATIONS = process.env.NEXT_PUBLIC_COMMUNICATIONS_URL || 'http://localhost:3009'
+const WHATSAPP_STORE = process.env.NEXT_PUBLIC_WHATSAPP_STORE_URL || 'http://localhost:4005'
 
 // ============================================================================
 // Types
@@ -267,4 +269,134 @@ export const aiAPI = {
 
   predictTiming: (audienceId: string) =>
     fetchAPI<{ optimalTime: string; reason: string }>(`/api/ai/predict-timing/${audienceId}`),
+}
+
+// ============================================================================
+// AdBazaar API (via ads-service)
+// ============================================================================
+
+export interface AdBazaarAd {
+  id: string
+  merchantId: string
+  title: string
+  headline: string
+  description: string
+  ctaText: string
+  ctaUrl: string
+  imageUrl: string
+  placement: 'home_banner' | 'explore_feed' | 'store_listing' | 'search_result'
+  bidType: 'CPC' | 'CPM'
+  bidAmount: number
+  dailyBudget: number
+  totalBudget: number
+  status: 'draft' | 'pending_review' | 'active' | 'paused' | 'rejected' | 'completed'
+  impressions: number
+  clicks: number
+  conversions: number
+}
+
+export const adbazaarAPI = {
+  // Ads
+  listAds: (params?: { status?: string; page?: number }) =>
+    fetchAPI<{ data: AdBazaarAd[]; pagination: { total: number } }>(
+      `${ADS_SERVICE}/api/ads?${new URLSearchParams(params as Record<string, string>)}`
+    ),
+
+  createAd: (data: Omit<AdBazaarAd, 'id' | 'merchantId' | 'status' | 'impressions' | 'clicks' | 'conversions'>) =>
+    fetchAPI<AdBazaarAd>(`${ADS_SERVICE}/api/ads`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateAd: (id: string, data: Partial<AdBazaarAd>) =>
+    fetchAPI<AdBazaarAd>(`${ADS_SERVICE}/api/ads/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  pauseAd: (id: string) =>
+    fetchAPI<AdBazaarAd>(`${ADS_SERVICE}/api/ads/${id}/pause`, { method: 'PUT' }),
+
+  activateAd: (id: string) =>
+    fetchAPI<AdBazaarAd>(`${ADS_SERVICE}/api/ads/${id}/activate`, { method: 'PUT' }),
+
+  deleteAd: (id: string) =>
+    fetchAPI<void>(`${ADS_SERVICE}/api/ads/${id}`, { method: 'DELETE' }),
+
+  // Analytics
+  getAdAnalytics: (id: string) =>
+    fetchAPI<{ impressions: number; clicks: number; conversions: number; ctr: number; spend: number }>(
+      `${ADS_SERVICE}/api/ads/${id}/analytics`
+    ),
+
+  getMerchantAnalytics: () =>
+    fetchAPI<{ totalImpressions: number; totalClicks: number; totalConversions: number; totalSpend: number }>(
+      `${ADS_SERVICE}/api/ads/analytics`
+    ),
+
+  // Marketplace
+  getMarketplaceAds: (params?: { placement?: string; segment?: string }) =>
+    fetchAPI<AdBazaarAd[]>(
+      `${ADS_SERVICE}/api/ads/marketplace?${new URLSearchParams(params as Record<string, string>)}`
+    ),
+}
+
+// ============================================================================
+// WhatsApp Commerce API (via rez-whatsapp-store)
+// ============================================================================
+
+export interface WhatsAppProduct {
+  id: string
+  merchantId: string
+  name: string
+  description: string
+  price: number
+  imageUrl: string
+  category: string
+  inStock: boolean
+}
+
+export interface WhatsAppCart {
+  id: string
+  userId: string
+  items: { productId: string; quantity: number }[]
+  total: number
+  deliveryFee: number
+}
+
+export const whatsappCommerceAPI = {
+  // Catalog
+  listProducts: (params?: { category?: string; search?: string }) =>
+    fetchAPI<WhatsAppProduct[]>(
+      `${WHATSAPP_STORE}/api/catalog?${new URLSearchParams(params as Record<string, string>)}`
+    ),
+
+  getProduct: (id: string) =>
+    fetchAPI<WhatsAppProduct>(`${WHATSAPP_STORE}/api/catalog/${id}`),
+
+  // Cart
+  getCart: (userId: string) =>
+    fetchAPI<WhatsAppCart>(`${WHATSAPP_STORE}/api/cart/${userId}`),
+
+  addToCart: (userId: string, productId: string, quantity: number) =>
+    fetchAPI<WhatsAppCart>(`${WHATSAPP_STORE}/api/cart/${userId}/add`, {
+      method: 'POST',
+      body: JSON.stringify({ productId, quantity }),
+    }),
+
+  // Checkout
+  initiateCheckout: (userId: string, address: { line1: string; city: string; pincode: string }) =>
+    fetchAPI<{ checkoutId: string; paymentUrl: string }>(`${WHATSAPP_STORE}/api/checkout/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ address }),
+    }),
+
+  // Orders
+  getOrders: (userId: string) =>
+    fetchAPI<{ id: string; status: string; total: number; createdAt: string }[]>(
+      `${WHATSAPP_STORE}/api/orders/${userId}`
+    ),
+
+  getOrderStatus: (orderId: string) =>
+    fetchAPI<{ status: string; trackingUrl?: string }>(`${WHATSAPP_STORE}/api/orders/${orderId}/status`),
 }
