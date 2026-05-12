@@ -34,7 +34,15 @@ import {
 // Cross-Service Integration Configuration
 // ============================================================================
 
-const INTERNAL_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || 'dooh-service-token';
+function getInternalToken(): string {
+  const token = process.env.INTERNAL_SERVICE_TOKEN;
+  if (!token) {
+    throw new Error('INTERNAL_SERVICE_TOKEN environment variable is required');
+  }
+  return token;
+}
+
+const INTERNAL_TOKEN = getInternalToken();
 const DEFAULT_TIMEOUT = 15000;
 const MAX_RETRIES = 3;
 const CIRCUIT_BREAKER_THRESHOLD = 5;

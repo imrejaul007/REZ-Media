@@ -342,6 +342,160 @@ export const adbazaarAPI = {
 }
 
 // ============================================================================
+// Wallet API (via rez-wallet-service)
+// ============================================================================
+
+export interface WalletBalance {
+  available: number
+  reserved: number
+  total: number
+}
+
+export interface WalletReservation {
+  reservationId: string
+  amount: number
+  purpose: string
+  campaignId?: string
+  createdAt: string
+}
+
+export interface WalletTransaction {
+  id: string
+  type: 'credit' | 'debit'
+  amount: number
+  reason: string
+  balanceAfter: number
+  createdAt: string
+}
+
+const WALLET_SERVICE = process.env.NEXT_PUBLIC_WALLET_SERVICE_URL || 'http://localhost:4002'
+
+export const walletAPI = {
+  // Get balance
+  getBalance: (merchantId: string) =>
+    fetchAPI<WalletBalance>(`${WALLET_SERVICE}/api/wallet/balance/${merchantId}`),
+
+  // Reserve funds for campaign
+  reserve: (data: {
+    merchantId: string
+    amount: number
+    campaignId?: string
+    purpose: string
+  }) =>
+    fetchAPI<WalletReservation>(`${WALLET_SERVICE}/api/wallet/reserve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Release reservation
+  release: (reservationId: string) =>
+    fetchAPI<{ success: boolean }>(`${WALLET_SERVICE}/api/wallet/release/${reservationId}`, {
+      method: 'POST',
+    }),
+
+  // Deduct from wallet
+  deduct: (data: {
+    merchantId: string
+    amount: number
+    reason: string
+    campaignId?: string
+  }) =>
+    fetchAPI<{ success: boolean; newBalance: number }>(`${WALLET_SERVICE}/api/wallet/deduct`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Add funds
+  deposit: (data: {
+    merchantId: string
+    amount: number
+    paymentMethod: string
+  }) =>
+    fetchAPI<{ success: boolean; newBalance: number }>(`${WALLET_SERVICE}/api/wallet/deposit`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Get transactions
+  getTransactions: (merchantId: string, limit = 50) =>
+    fetchAPI<{ transactions: WalletTransaction[] }>(
+      `${WALLET_SERVICE}/api/wallet/transactions/${merchantId}?limit=${limit}`
+    ),
+
+  // Auto-recharge settings
+  getAutoRecharge: (merchantId: string) =>
+    fetchAPI<{ enabled: boolean; threshold: number; amount: number }>(
+      `${WALLET_SERVICE}/api/wallet/auto-recharge/${merchantId}`
+    ),
+
+  setAutoRecharge: (merchantId: string, settings: { enabled: boolean; threshold: number; amount: number }) =>
+    fetchAPI<{ success: boolean }>(`${WALLET_SERVICE}/api/wallet/auto-recharge/${merchantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }),
+}
+
+// ============================================================================
+// Campaign Creator API (Create unified campaigns)
+// ============================================================================
+
+export interface UnifiedCampaignRequest {
+  merchantId: string
+  types: string[]
+  channels: string[]
+  budget: number
+  duration: number
+  location: string
+  targeting: string
+  name: string
+  startDate: string
+}
+
+export interface UnifiedCampaignResponse {
+  campaignId: string
+  reservations: WalletReservation[]
+  totalReserved: number
+  estimatedCost: number
+  channels: {
+    type: string
+    channelId: string
+    budget: number
+  }[]
+}
+
+export const campaignAPI = {
+  // Create unified campaign (reserves wallet, creates all sub-campaigns)
+  createUnified: (data: UnifiedCampaignRequest) =>
+    fetchAPI<UnifiedCampaignResponse>('/api/campaigns/unified', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Get unified campaign status
+  getStatus: (campaignId: string) =>
+    fetchAPI<{
+      id: string
+      status: string
+      subCampaigns: { type: string; status: string; spent: number }[]
+      walletUsage: { reserved: number; spent: number; remaining: number }
+    }>(`/api/campaigns/${campaignId}/status`),
+
+  // Pause campaign
+  pause: (campaignId: string) =>
+    fetchAPI<{ success: boolean }>(`/api/campaigns/${campaignId}/pause`, { method: 'POST' }),
+
+  // Resume campaign
+  resume: (campaignId: string) =>
+    fetchAPI<{ success: boolean }>(`/api/campaigns/${campaignId}/resume`, { method: 'POST' }),
+
+  // Cancel campaign (releases reservations)
+  cancel: (campaignId: string) =>
+    fetchAPI<{ success: boolean; refundedAmount: number }>(`/api/campaigns/${campaignId}/cancel`, {
+      method: 'POST',
+    }),
+}
+
+// ============================================================================
 // WhatsApp Commerce API (via rez-whatsapp-store)
 // ============================================================================
 

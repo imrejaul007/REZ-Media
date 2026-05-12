@@ -29,6 +29,56 @@ class ScreenStore {
   private screens: Map<string, Screen> = new Map();
   private healthMap: Map<string, ScreenHealth> = new Map();
   private heartbeatMap: Map<string, Date> = new Map();
+  // Per-screen API keys - each screen gets a unique key
+  private screenApiKeys: Map<string, string> = new Map();
+
+  /**
+   * Generate a unique API key for a screen
+   */
+  private generateScreenApiKey(screenId: string): string {
+    // Generate a unique key using screen ID + random component
+    const randomPart = Math.random().toString(36).substring(2, 15);
+    const screenPart = screenId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+    return `dooh_sk_${screenPart}_${randomPart}`;
+  }
+
+  /**
+   * Get API key for a screen (creates one if not exists)
+   */
+  getScreenApiKey(screenId: string): string | undefined {
+    if (!this.screenApiKeys.has(screenId)) {
+      // Only generate key if screen exists
+      if (!this.screens.has(screenId)) {
+        return undefined;
+      }
+      const key = this.generateScreenApiKey(screenId);
+      this.screenApiKeys.set(screenId, key);
+      return key;
+    }
+    return this.screenApiKeys.get(screenId);
+  }
+
+  /**
+   * Validate a screen API key
+   */
+  validateScreenApiKey(screenId: string, apiKey: string): boolean {
+    const storedKey = this.screenApiKeys.get(screenId);
+    if (!storedKey) return false;
+    // Use timing-safe comparison to prevent timing attacks
+    if (storedKey.length !== apiKey.length) return false;
+    let result = 0;
+    for (let i = 0; i < storedKey.length; i++) {
+      result |= storedKey.charCodeAt(i) ^ apiKey.charCodeAt(i);
+    }
+    return result === 0;
+  }
+
+  /**
+   * Revoke API key for a screen
+   */
+  revokeScreenApiKey(screenId: string): boolean {
+    return this.screenApiKeys.delete(screenId);
+  }
 
   /**
    * Register a new screen
@@ -61,6 +111,9 @@ class ScreenStore {
 
     this.screens.set(screen.id, screen);
     this.initializeHealth(screen.id);
+    // Generate API key for this screen
+    const apiKey = this.generateScreenApiKey(screen.id);
+    this.screenApiKeys.set(screen.id, apiKey);
 
     return screen;
   }
@@ -229,23 +282,34 @@ class ScreenStore {
    * Generate content update for screen
    */
   private generateContentUpdate(screen: Screen): ContentUpdate {
+    const config = this.getScreenConfig(screen.id);
+    if (!config) {
+      throw new Error(`Failed to get config for screen: ${screen.id}`);
+    }
+
     return {
       screen_id: screen.id,
       playlist: {} as Playlist, // Will be populated by playlist service
       creatives: [] as Creative[], // Will be populated by playlist service
-      config: this.getScreenConfig(),
+      config: config,
       version: (screen.playlist_version || 0) + 1,
       timestamp: new Date(),
     };
   }
 
   /**
-   * Get screen OS configuration
+   * Get screen OS configuration with per-screen API key
    */
-  private getScreenConfig(): ScreenOSConfig {
+  getScreenConfig(screenId: string): ScreenOSConfig | null {
+    const apiKey = this.screenApiKeys.get(screenId);
+    if (!apiKey) {
+      console.warn(`No API key found for screen: ${screenId}`);
+      return null;
+    }
+
     return {
       server_url: process.env.DOOH_SERVER_URL || 'https://dooh.rezapp.com',
-      api_key: process.env.DOOH_API_KEY || '',
+      api_key: apiKey, // Use per-screen key, never expose global key
       sync_interval: 300, // 5 minutes
       playlist_refresh: 300,
       heartbeat_interval: 60,
@@ -551,6 +615,43 @@ export class ScreenManagementService {
   getCitiesSummary(): { city: string; count: number }[] {
     const stats = this.store.getStats();
     return Object.entries(stats.by_city).map(([city, count]) => ({ city, count }));
+  }
+
+  // -------------------------------------------------------------------------
+  // API Key Management
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get API key for a screen (creates one if not exists)
+   * Returns null if screen doesn't exist
+   */
+  getScreenApiKey(screenId: string): { success: true; apiKey: string } | { success: false; error: string } {
+    const apiKey = this.store.getScreenApiKey(screenId);
+    if (!apiKey) {
+      return { success: false, error: 'Screen not found' };
+    }
+    return { success: true, apiKey };
+  }
+
+  /**
+   * Validate a screen's API key
+   */
+  validateScreenApiKey(screenId: string, apiKey: string): boolean {
+    return this.store.validateScreenApiKey(screenId, apiKey);
+  }
+
+  /**
+   * Get screen configuration (includes per-screen API key)
+   */
+  getScreenConfig(screenId: string): ScreenOSConfig | null {
+    return this.store.getScreenConfig(screenId);
+  }
+
+  /**
+   * Revoke API key for a screen (for security)
+   */
+  revokeScreenApiKey(screenId: string): boolean {
+    return this.store.revokeScreenApiKey(screenId);
   }
 }
 

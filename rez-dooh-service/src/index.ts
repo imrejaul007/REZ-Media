@@ -28,6 +28,14 @@ import { createScreenRoutes } from './routes/screens';
 import { createAdRoutes } from './routes/ads';
 import { createAnalyticsRoutes } from './routes/analytics';
 
+// Middleware
+import {
+  createAuthMiddleware,
+  requestIdMiddleware,
+  rateLimitMiddleware,
+  writeRateLimitMiddleware,
+} from './middleware/auth';
+
 // Types
 import { GuardrailConfig } from './types';
 
@@ -103,10 +111,20 @@ export class DOOHService {
   // -------------------------------------------------------------------------
 
   private setupMiddleware(): void {
-    // CORS
-    this.app.use(cors(this.config.cors || {
-      origin: '*',
+    // Request ID for tracing
+    this.app.use(requestIdMiddleware);
+
+    // CORS - Use explicit allowed origins instead of wildcard
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : ['https://rezapp.com', 'https://www.rezapp.com', 'http://localhost:3000'];
+
+    this.app.use(cors({
+      origin: allowedOrigins,
       credentials: true,
+      methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Token', 'X-Api-Key', 'X-Request-Id'],
+      maxAge: 86400, // 24 hours
     }));
 
     // Helmet for security headers
@@ -116,9 +134,13 @@ export class DOOHService {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Request logging
+    // Global rate limiting
+    this.app.use(rateLimitMiddleware);
+
+    // Request logging with request ID
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+      const requestId = (req as any).requestId;
+      console.log(`[${new Date().toISOString()}] [${requestId}] ${req.method} ${req.path}`);
       next();
     });
 
@@ -152,25 +174,38 @@ export class DOOHService {
   }
 
   private setupRoutes(): void {
-    // Screen routes
-    this.app.use('/api/screens', createScreenRoutes({
-      screenService: this.screenService,
-      analyticsService: this.analyticsService,
-    }));
+    // Screen routes - requires internal service auth
+    this.app.use(
+      '/api/screens',
+      createAuthMiddleware(),
+      writeRateLimitMiddleware(),
+      createScreenRoutes({
+        screenService: this.screenService,
+        analyticsService: this.analyticsService,
+      })
+    );
 
-    // Ad routes
-    this.app.use('/api/ads', createAdRoutes({
-      adDecisionService: this.adDecisionService,
-      personalizationService: this.personalizationService,
-      screenService: this.screenService,
-      areaService: this.areaService,
-    }));
+    // Ad routes - requires internal service auth
+    this.app.use(
+      '/api/ads',
+      createAuthMiddleware(),
+      createAdRoutes({
+        adDecisionService: this.adDecisionService,
+        personalizationService: this.personalizationService,
+        screenService: this.screenService,
+        areaService: this.areaService,
+      })
+    );
 
-    // Analytics routes
-    this.app.use('/api/analytics', createAnalyticsRoutes({
-      analyticsService: this.analyticsService,
-      screenService: this.screenService,
-    }));
+    // Analytics routes - requires internal service auth
+    this.app.use(
+      '/api/analytics',
+      createAuthMiddleware(),
+      createAnalyticsRoutes({
+        analyticsService: this.analyticsService,
+        screenService: this.screenService,
+      })
+    );
 
     // API root
     this.app.get('/api', (_req: Request, res: Response) => {
@@ -197,13 +232,20 @@ export class DOOHService {
       });
     });
 
-    // Error handler
+    // Error handler - Don't leak internal details
     this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Error:', err);
+      const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      console.error(`[${errorId}] Error:`, err);
+
+      // Log full error internally for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Stack trace:', err.stack);
+      }
+
       res.status(500).json({
         success: false,
         error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+        errorId, // Provide error ID for support tickets
       });
     });
   }

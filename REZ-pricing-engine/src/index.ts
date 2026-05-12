@@ -131,6 +131,129 @@ app.get('/api/price/caps', (req: Request, res: Response) => {
 });
 
 // ============================================================================
+// UNIFIED CAMPAIGN ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/campaigns/unified - Create unified campaign with wallet reservation
+ */
+app.post('/api/campaigns/unified', async (req: Request, res: Response) => {
+  try {
+    const { merchantId, types, channels, budget, duration, location, targeting, name } = req.body;
+
+    // Validate budget against minimums
+    const validation = pricingBrain.validateMinimumSpend(types[0] as any, budget);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, error: validation.message });
+    }
+
+    // Calculate pricing for each channel
+    const channelPricing = [];
+    let totalEstimate = 0;
+
+    for (const type of types) {
+      const pricing = await pricingBrain.calculatePrice({
+        adType: type,
+        placement: type,
+        location: { city: location, tier: 'tier1' },
+        targetAudience: { segment: targeting },
+        goalType: 'conversions',
+        budget,
+        campaignMode: 'auction',
+      });
+
+      totalEstimate += pricing.finalPrice * duration;
+
+      channelPricing.push({
+        type,
+        estimatedPrice: pricing.finalPrice,
+        unit: pricing.unit,
+        reach: pricing.estimatedResults.reach,
+      });
+    }
+
+    // Create reservation (would call wallet service)
+    const reservationId = `res_${Date.now()}`;
+
+    res.json({
+      success: true,
+      data: {
+        campaignId: `camp_${Date.now()}`,
+        reservationId,
+        totalEstimate: Math.round(totalEstimate),
+        walletRequired: Math.round(totalEstimate * 1.2), // 20% buffer
+        channelPricing,
+        message: 'Funds reserved from merchant wallet',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+/**
+ * GET /api/campaigns/:id/status - Get campaign status with wallet usage
+ */
+app.get('/api/campaigns/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Mock data - would query actual campaign
+    res.json({
+      success: true,
+      data: {
+        id,
+        status: 'active',
+        subCampaigns: [
+          { type: 'in-app', status: 'active', spent: 2500 },
+          { type: 'dooh', status: 'active', spent: 8000 },
+        ],
+        walletUsage: {
+          reserved: 15000,
+          spent: 10500,
+          remaining: 4500,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+/**
+ * POST /api/campaigns/:id/pause - Pause campaign
+ */
+app.post('/api/campaigns/:id/pause', async (req: Request, res: Response) => {
+  res.json({ success: true, data: { id: req.params.id, status: 'paused' } });
+});
+
+/**
+ * POST /api/campaigns/:id/resume - Resume campaign
+ */
+app.post('/api/campaigns/:id/resume', async (req: Request, res: Response) => {
+  res.json({ success: true, data: { id: req.params.id, status: 'active' } });
+});
+
+/**
+ * POST /api/campaigns/:id/cancel - Cancel campaign and release reservation
+ */
+app.post('/api/campaigns/:id/cancel', async (req: Request, res: Response) => {
+  try {
+    // Would release wallet reservation
+    res.json({
+      success: true,
+      data: {
+        id: req.params.id,
+        status: 'cancelled',
+        refundedAmount: 4500, // Unused portion
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// ============================================================================
 // EXAMPLE REQUEST/RESPONSE
 // ============================================================================
 

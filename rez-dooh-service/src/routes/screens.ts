@@ -403,5 +403,95 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
     }
   });
 
+  // ==========================================================================
+  // API Key Management
+  // ==========================================================================
+
+  /**
+   * GET /screens/:id/apikey
+   * Get screen API key (requires authentication)
+   */
+  router.get('/:id/apikey', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Verify screen exists
+      const screen = screenService.getScreen(id);
+      if (!screen) {
+        return res.status(404).json({
+          success: false,
+          error: 'Screen not found',
+        });
+      }
+
+      const result = screenService.getScreenApiKey(id);
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+        });
+      }
+
+      return res.json({
+        success: true,
+        screen_id: id,
+        api_key: result.apiKey,
+        // Don't expose key in logs
+        message: 'Store this key securely. It will not be shown again.',
+      });
+    } catch (error) {
+      console.error('Get API key error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get screen API key',
+      });
+    }
+  });
+
+  /**
+   * POST /screens/:id/apikey/rotate
+   * Rotate screen API key (invalidates old key)
+   */
+  router.post('/:id/apikey/rotate', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Revoke existing key
+      const revoked = screenService.revokeScreenApiKey(id);
+      if (!revoked) {
+        // Check if screen exists
+        const screen = screenService.getScreen(id);
+        if (!screen) {
+          return res.status(404).json({
+            success: false,
+            error: 'Screen not found',
+          });
+        }
+      }
+
+      // Generate new key by requesting it
+      const result = screenService.getScreenApiKey(id);
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+        });
+      }
+
+      return res.json({
+        success: true,
+        screen_id: id,
+        api_key: result.apiKey,
+        message: 'API key rotated. Store the new key securely.',
+      });
+    } catch (error) {
+      console.error('Rotate API key error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to rotate screen API key',
+      });
+    }
+  });
+
   return router;
 }
