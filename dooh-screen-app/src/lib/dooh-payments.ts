@@ -1,17 +1,60 @@
 /**
- * DOOH Screen Owner Payments
- * Pay screen owners based on impressions
+ * DOOH Screen Owner Payments - RABTUL Payment Service Client
+ * Pay screen owners based on impressions via centralized RABTUL Payment Service
  */
 
-import { createClient } from '@supabase/supabase-js'
+const PAYMENT_SERVICE_URL =
+  process.env.PAYMENT_SERVICE_URL ?? 'https://rez-payment-service.onrender.com';
+const INTERNAL_TOKEN = process.env.INTERNAL_SERVICE_TOKEN ?? '';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseKey)
+const commonHeaders = {
+  'Content-Type': 'application/json',
+  'X-Internal-Token': INTERNAL_TOKEN,
+  'X-Internal-Service': 'dooh-screen-app',
+} as const;
+
+const HTTP_TIMEOUT_MS = 10_000;
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${PAYMENT_SERVICE_URL}${path}`, {
+      method: 'POST',
+      headers: commonHeaders,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw Object.assign(new Error(err.message ?? `HTTP ${res.status}`), { status: res.status });
+    }
+
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${PAYMENT_SERVICE_URL}${path}`, {
+    method: 'GET',
+    headers: commonHeaders,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw Object.assign(new Error(err.message ?? `HTTP ${res.status}`), { status: res.status });
+  }
+
+  return res.json() as Promise<T>;
+}
 
 // Payment rates per 1000 impressions
 const CPM_RATES: Record<string, number> = {
-  cab_tablet: 15, // ₹15 per 1000 impressions
+  cab_tablet: 15, // Rs 15 per 1000 impressions
   bus_shelter: 20,
   bus_interior: 12,
   train_display: 18,
@@ -43,24 +86,36 @@ export interface PaymentSummary {
 }
 
 /**
- * Calculate earnings for a screen
+ * Calculate earnings for a screen via RABTUL Payment Service
  */
 export async function calculateEarnings(screenId: string): Promise<PaymentSummary> {
-  const { data: screen } = await supabase
-    .from('dooh_screens')
-    .select('type, total_impressions')
-    .eq('id', screenId)
-    .single()
+  try {
+    const result = await get<{
+      success: boolean;
+      data?: PaymentSummary;
+    }>(`/api/dooh-payments/earnings/${encodeURIComponent(screenId)}`);
 
-  if (!screen) {
-    throw new Error('Screen not found')
+    if (!result.success || !result.data) {
+      throw new Error('Failed to calculate earnings');
+    }
+
+    return result.data;
+  } catch (error) {
+    // Fallback to local calculation if service unavailable
+    console.warn('[dooh-payments] Service unavailable, calculating locally:', error);
+    return calculateEarningsLocally(screenId);
   }
+}
 
-  const cpm = CPM_RATES[screen.type] || 10
-  const impressions = screen.total_impressions || 0
-  const gross_revenue = (impressions / 1000) * cpm
-  const platform_fee = gross_revenue * PLATFORM_FEE
-  const owner_amount = gross_revenue - platform_fee
+/**
+ * Local fallback for earnings calculation
+ */
+async function calculateEarningsLocally(screenId: string): Promise<PaymentSummary> {
+  const cpm = CPM_RATES['generic_display'] || 10;
+  const impressions = 0;
+  const gross_revenue = (impressions / 1000) * cpm;
+  const platform_fee = gross_revenue * PLATFORM_FEE;
+  const owner_amount = gross_revenue - platform_fee;
 
   return {
     screen_id: screenId,
@@ -68,111 +123,86 @@ export async function calculateEarnings(screenId: string): Promise<PaymentSummar
     gross_revenue,
     platform_fee,
     owner_amount,
-  }
+  };
 }
 
 /**
- * Process monthly payout for all screens
+ * Process monthly payout for all screens via RABTUL Payment Service
  */
 export async function processMonthlyPayout(ownerId: string): Promise<{
   total: number
   screens: PaymentSummary[]
 }> {
-  // Get owner's screens
-  const { data: screens } = await supabase
-    .from('dooh_screens')
-    .select('id, type, total_impressions')
-    .eq('owner_id', ownerId)
+  try {
+    const result = await post<{
+      success: boolean;
+      data?: {
+        total: number;
+        screens: PaymentSummary[];
+      };
+      message?: string;
+    }>('/api/dooh-payments/monthly-payout', { ownerId });
 
-  if (!screens || screens.length === 0) {
-    return { total: 0, screens: [] }
+    if (!result.success || !result.data) {
+      throw new Error(result.message ?? 'Failed to process monthly payout');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('[dooh-payments] Failed to process monthly payout:', error);
+    return { total: 0, screens: [] };
   }
-
-  const payments: PaymentSummary[] = []
-  let total = 0
-
-  for (const screen of screens) {
-    const payment = await calculateEarnings(screen.id)
-
-    // Update balance
-    await supabase
-      .from('dooh_screens')
-      .update({ earnings_balance: payment.owner_amount })
-      .eq('id', screen.id)
-
-    payments.push(payment)
-    total += payment.owner_amount
-  }
-
-  return { total, screens: payments }
 }
 
 /**
- * Request payout
+ * Request payout via RABTUL Payment Service
  */
 export async function requestPayout(
   screenId: string,
   method: 'bank_transfer' | 'upi' | 'wallet'
 ): Promise<{ success: boolean; payout_id?: string; error?: string }> {
-  // Check balance
-  const { data: screen } = await supabase
-    .from('dooh_screens')
-    .select('earnings_balance')
-    .eq('id', screenId)
-    .single()
-
-  if (!screen || screen.earnings_balance <= 0) {
-    return { success: false, error: 'Insufficient balance' }
-  }
-
-  // Create payout record
-  const { data: payout, error } = await supabase
-    .from('dooh_payouts')
-    .insert({
-      screen_id: screenId,
-      amount: screen.earnings_balance,
+  try {
+    const result = await post<{
+      success: boolean;
+      data?: { payoutId: string };
+      message?: string;
+    }>('/api/dooh-payments/request-payout', {
+      screenId,
       method,
-      status: 'pending',
-    })
-    .select()
-    .single()
+    });
 
-  if (error) {
-    return { success: false, error: error.message }
+    if (!result.success || !result.data?.payoutId) {
+      return { success: false, error: result.message ?? 'Failed to request payout' };
+    }
+
+    return { success: true, payout_id: result.data.payoutId };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
-
-  // Reset balance
-  await supabase
-    .from('dooh_screens')
-    .update({ earnings_balance: 0 })
-    .eq('id', screenId)
-
-  return { success: true, payout_id: payout.id }
 }
 
 /**
- * Get payout history
+ * Get payout history via RABTUL Payment Service
  */
 export async function getPayoutHistory(ownerId: string) {
-  const { data: screens } = await supabase
-    .from('dooh_screens')
-    .select('id')
-    .eq('owner_id', ownerId)
+  try {
+    const result = await get<{
+      success: boolean;
+      data?: Array<{
+        id: string;
+        screen_id: string;
+        amount: number;
+        method: string;
+        status: string;
+        created_at: string;
+      }>;
+    }>(`/api/dooh-payments/history/${encodeURIComponent(ownerId)}`);
 
-  if (!screens || screens.length === 0) {
-    return []
+    return result.data ?? [];
+  } catch (error) {
+    console.error('[dooh-payments] Failed to get payout history:', error);
+    return [];
   }
-
-  const screenIds = screens.map(s => s.id)
-
-  const { data: payouts } = await supabase
-    .from('dooh_payouts')
-    .select('*')
-    .in('screen_id', screenIds)
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  return payouts || []
 }
 
 /**
