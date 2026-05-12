@@ -15,6 +15,9 @@ Our platform offers a complete suite of marketing and advertising solutions:
 | **adBazaar** | Multi-channel ad marketplace connecting brands with premium inventory |
 | **adsqr** | QR code-based advertising with seamless offline-to-online tracking |
 | **dooh** | Digital Out-of-Home advertising for dynamic screen networks |
+| **dooh-screen-app** | DOOH screen management and content display |
+| **dooh-mobile** | DOOH mobile companion app for screen owners |
+| **rez-dooh-service** | DOOH backend service for scheduling and bidding |
 | **creators** | Influencer and creator partnership management platform |
 
 ### Loyalty & Gamification

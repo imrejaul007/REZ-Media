@@ -25,6 +25,8 @@
 | **Hotel OTA App** | Mobile App | React Native | Hotel booking integration |
 | **Rendez App** | Mobile App | React Native | Restaurant reservations |
 | **Food Delivery App** | Mobile App | React Native | Food ordering |
+| **dooh-screen-app** | Web App | Next.js | DOOH screen management and content display |
+| **dooh-mobile** | Mobile App | React Native | DOOH mobile companion for screen owners |
 
 ### Admin/Merchant Products
 
@@ -56,7 +58,10 @@
 |---------|---------|-------------|
 | **adBazaar** | Consumer marketplace | Campaign browsing, real-time pricing, analytics |
 | **adsqr** | QR advertising | QR generation, offline tracking |
-| **dooh** | Digital Out-of-Home | Screen inventory, scheduling, dynamic content |
+| **dooh** | Digital Out-of-Home backend | Screen inventory, scheduling, dynamic content |
+| **dooh-screen-app** | DOOH screen display | Next.js app for digital screens |
+| **dooh-mobile** | DOOH screen owner app | Mobile app for screen management |
+| **rez-dooh-service** | DOOH bidding engine | Real-time auction and bidding |
 | **creators** | Creator partnerships | Profile management, campaign matching |
 | **REZ-engagement-platform** | Unified loyalty | Offers, referrals, tier management |
 | **REZ-discovery-platform** | Discovery | Search, recommendations, trending |
