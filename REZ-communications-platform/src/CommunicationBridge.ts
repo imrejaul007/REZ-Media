@@ -66,7 +66,7 @@ export interface NotificationResult {
 const EVENT_TEMPLATES = {
   // Ad Events
   ad_approved: {
-    title: 'Your Ad is Live! 🎉',
+    title: 'Your Ad is Live!',
     body: 'Your ad "{{adTitle}}" has been approved and is now live.',
     channels: ['push', 'email'],
   },
@@ -88,27 +88,27 @@ const EVENT_TEMPLATES = {
 
   // Gamification Events
   achievement_unlocked: {
-    title: 'Achievement Unlocked! 🏆',
+    title: 'Achievement Unlocked!',
     body: 'You earned the "{{achievementName}}" badge!',
     channels: ['push'],
   },
   streak_milestone: {
-    title: 'Streak Milestone! 🔥',
-    body: 'You\'ve maintained a {{streakDays}} day streak! Keep it up!',
+    title: 'Streak Milestone!',
+    body: 'You have maintained a {{streakDays}} day streak! Keep it up!',
     channels: ['push'],
   },
   challenge_completed: {
-    title: 'Challenge Complete! 🎯',
+    title: 'Challenge Complete!',
     body: 'You completed the "{{challengeName}}" challenge!',
     channels: ['push'],
   },
   leaderboard_update: {
     title: 'Leaderboard Update',
-    body: 'You\'re now ranked #{{rank}}!',
+    body: 'You are now ranked #{{rank}}!',
     channels: ['push'],
   },
   points_expiring: {
-    title: 'Points Expiring Soon ⏰',
+    title: 'Points Expiring Soon',
     body: 'You have {{points}} points expiring in {{days}} days!',
     channels: ['push', 'email'],
   },
@@ -121,7 +121,7 @@ const EVENT_TEMPLATES = {
   },
   abandonment_recovery: {
     title: 'Complete Your Order',
-    body: 'You left items in your cart! Complete your purchase now.',
+    body: 'You left items in your cart! Complete your purchase now and get {{discount}}% off.',
     channels: ['email', 'sms', 'whatsapp'],
   },
   welcome_sequence: {
@@ -131,8 +131,52 @@ const EVENT_TEMPLATES = {
   },
   reengagement: {
     title: 'We Miss You!',
-    body: 'It\'s been a while since your last visit. Here\'s a special offer!',
+    body: 'It has been {{daysSinceLastVisit}} days since your last visit. Here is a special offer for you!',
     channels: ['email', 'push'],
+  },
+  win_back: {
+    title: 'We Want You Back!',
+    body: 'You have {{bonusPoints}} bonus points waiting for you! Come back now.',
+    channels: ['email', 'sms', 'whatsapp'],
+  },
+  referral: {
+    title: 'Share REZ & Earn Rewards!',
+    body: 'Invite friends to REZ and you both get {{reward}}! Your code: {{referralCode}}',
+    channels: ['email', 'sms', 'whatsapp'],
+  },
+  promotion: {
+    title: '{{promotionTitle}}',
+    body: '{{promotionDescription}} Valid until {{expiryDate}}.',
+    channels: ['email', 'push'],
+  },
+
+  // Transactional Events
+  order_confirmation: {
+    title: 'Order Confirmed!',
+    body: 'Your order #{{orderId}} has been confirmed. Total: {{total}}',
+    channels: ['email', 'sms'],
+  },
+  payment_success: {
+    title: 'Payment Successful!',
+    body: 'Your payment of {{amount}} was successful. Transaction ID: {{transactionId}}',
+    channels: ['email', 'push'],
+  },
+
+  // Notification Events
+  price_alert: {
+    title: 'Price Drop Alert!',
+    body: 'Good news! {{productName}} is now {{newPrice}} (was {{oldPrice}}). Save {{savings}}!',
+    channels: ['push', 'email'],
+  },
+  new_deal: {
+    title: 'New Deal Near You!',
+    body: '{{merchantName}} has a new {{dealType}} deal: {{dealTitle}}',
+    channels: ['push', 'email'],
+  },
+  reservation_reminder: {
+    title: 'Reservation Tomorrow',
+    body: 'Reminder: {{reservationType}} at {{merchantName}} tomorrow at {{time}}.',
+    channels: ['push', 'sms'],
   },
 };
 
@@ -146,7 +190,7 @@ export class CommunicationBridge {
   private whatsapp: WhatsAppService;
   private push: PushService;
   private fallbackUrl: string;
-  private internalToken: string;
+  private serviceTokens: Record<string, string>;
 
   constructor() {
     this.email = createEmailService({
@@ -177,7 +221,24 @@ export class CommunicationBridge {
     });
 
     this.fallbackUrl = process.env.NOTIFICATIONS_HUB_URL || 'http://localhost:4009';
-    this.internalToken = process.env.INTERNAL_SERVICE_TOKEN || '';
+
+    // Parse internal service tokens from JSON format
+    const tokensJson = process.env.INTERNAL_SERVICE_TOKENS_JSON;
+    this.serviceTokens = tokensJson ? JSON.parse(tokensJson) : {};
+  }
+
+  /**
+   * Get internal service token for a service name
+   */
+  private getServiceToken(serviceName: string): string {
+    return this.serviceTokens[serviceName] || '';
+  }
+
+  /**
+   * Set internal service token
+   */
+  setServiceToken(serviceName: string, token: string): void {
+    this.serviceTokens[serviceName] = token;
   }
 
   /**
@@ -295,10 +356,11 @@ export class CommunicationBridge {
    */
   private async getFcmToken(userId: string): Promise<string | null> {
     try {
-      // Fetch from user profile service
-      const response = await fetch(`${process.env.AUTH_SERVICE_URL || 'http://localhost:4002'}/api/users/${userId}/fcm-token`, {
+      // Fetch from user profile service using internal auth
+      const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:4002';
+      const response = await fetch(`${authServiceUrl}/api/users/${userId}/fcm-token`, {
         headers: {
-          'X-Internal-Token': this.internalToken,
+          'X-Internal-Token': this.getServiceToken('auth-service'),
         },
       });
       if (response.ok) {
