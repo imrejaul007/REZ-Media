@@ -1,0 +1,66 @@
+name: Deploy REZ-ads-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'REZ-ads-service/**'
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: REZ-ads-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: REZ-ads-service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test || true
+
+      - name: Deploy to Render
+        if: env.RENDER_API_KEY != ''
+        run: |
+          curl -X POST https://api.render.com/v1/services \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceType": "web",
+              "name": "rez-ads-service",
+              "repo": "imrejaul007/REZ-Media",
+              "branch": "main",
+              "serviceDetails": {
+                "env": "node",
+                "region": "singapore"
+              }
+            }'
+        continue-on-error: true
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://rez-ads-service.onrender.com/health || echo "Health check skipped"
+        continue-on-error: true

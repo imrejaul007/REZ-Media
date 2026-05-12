@@ -1,0 +1,197 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  NODE_VERSION: '20'
+  CACHE_DIR: ~/.npm
+
+jobs:
+  # ==========================================
+  # TypeScript Check for all services
+  # ==========================================
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies for ads-service
+        run: |
+          cd REZ-ads-service
+          npm ci
+
+      - name: TypeScript check ads-service
+        run: |
+          cd REZ-ads-service
+          npx tsc --noEmit
+
+      - name: Install dependencies for decision-service
+        run: |
+          cd REZ-decision-service
+          npm ci
+
+      - name: TypeScript check decision-service
+        run: |
+          cd REZ-decision-service
+          npx tsc --noEmit
+
+  # ==========================================
+  # Lint all services
+  # ==========================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Lint ads-service
+        run: |
+          cd REZ-ads-service
+          npm ci
+          npm run lint
+
+      - name: Lint decision-service
+        run: |
+          cd REZ-decision-service
+          npm ci
+          npm run lint
+
+  # ==========================================
+  # Test ads-service
+  # ==========================================
+  test-ads-service:
+    name: Test ads-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: REZ-ads-service/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd REZ-ads-service
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd REZ-ads-service
+          npm test
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ads-service
+          path: REZ-ads-service/coverage
+          retention-days: 7
+
+  # ==========================================
+  # Test decision-service
+  # ==========================================
+  test-decision-service:
+    name: Test decision-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: REZ-decision-service/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd REZ-decision-service
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd REZ-decision-service
+          npm run test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-decision-service
+          path: REZ-decision-service/coverage
+          retention-days: 7
+
+  # ==========================================
+  # Build verification
+  # ==========================================
+  build:
+    name: Build Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [typecheck, lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Build ads-service
+        run: |
+          cd REZ-ads-service
+          npm ci
+          npm run build
+
+      - name: Build decision-service
+        run: |
+          cd REZ-decision-service
+          npm ci
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            REZ-ads-service/dist
+            REZ-decision-service/dist
+          retention-days: 1

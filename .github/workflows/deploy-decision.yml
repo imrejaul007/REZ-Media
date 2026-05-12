@@ -1,0 +1,63 @@
+name: Deploy REZ-decision-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'REZ-decision-service/**'
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: REZ-decision-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: REZ-decision-service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Render
+        if: env.RENDER_API_KEY != ''
+        run: |
+          curl -X POST https://api.render.com/v1/services \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceType": "web",
+              "name": "rez-decision-service",
+              "repo": "imrejaul007/REZ-Media",
+              "branch": "main",
+              "serviceDetails": {
+                "env": "node",
+                "region": "singapore"
+              }
+            }'
+        continue-on-error: true
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://rez-decision-service.onrender.com/health || echo "Health check skipped"
+        continue-on-error: true

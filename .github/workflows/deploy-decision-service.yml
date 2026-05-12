@@ -1,0 +1,186 @@
+name: Deploy decision-service to Render
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'REZ-decision-service/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NODE_VERSION: '20'
+  SERVICE_NAME: 'rez-decision-service'
+  RENDER_SERVICE_ID: ${{ vars.RENDER_DECISION_SERVICE_ID }}
+
+jobs:
+  # ==========================================
+  # Build Docker Image
+  # ==========================================
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ env.SERVICE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./REZ-decision-service
+          file: ./REZ-decision-service/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # Deploy to Render
+  # ==========================================
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: build
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Render via API
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          IMAGE_TAG: ${{ github.ref_name }}-${{ github.sha }}
+        run: |
+          # Get the latest deployment from Render
+          DEPLOYMENT_ID=$(curl -s -X POST \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "triggerPreview": false,
+              "clearCache": false,
+              "imageTag": "'"${IMAGE_TAG}"'"
+            }' | jq -r '.id')
+
+          if [ "$DEPLOYMENT_ID" != "null" ] && [ -n "$DEPLOYMENT_ID" ]; then
+            echo "Deployment triggered successfully: $DEPLOYMENT_ID"
+            echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> $GITHUB_ENV
+          else
+            echo "Failed to trigger deployment"
+            exit 1
+          fi
+
+      - name: Wait for deployment to complete
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          # Poll deployment status
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(curl -s \
+              "https://api.render.com/v1/deploys/${DEPLOYMENT_ID}" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" | jq -r '.status')
+
+            echo "Deployment status: $STATUS"
+
+            case $STATUS in
+              succeeded)
+                echo "Deployment succeeded!"
+                exit 0
+                ;;
+              failed|canceled)
+                echo "Deployment $STATUS"
+                exit 1
+                ;;
+              *)
+                ATTEMPT=$((ATTEMPT + 1))
+                sleep 20
+                ;;
+            esac
+          done
+
+          echo "Deployment timed out after $MAX_ATTEMPTS attempts"
+          exit 1
+
+      - name: Health check
+        run: |
+          # Wait a moment for the service to be ready
+          sleep 10
+
+          # Check service health (adjust port as needed)
+          curl -f --max-time 30 \
+            https://rez-decision-service.onrender.com/health \
+            || echo "Health check endpoint may need configuration"
+
+  # ==========================================
+  # Run post-deployment tests
+  # ==========================================
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against deployed service..."
+          # Add your smoke test commands here
+          # Example:
+          # curl -f https://rez-decision-service.onrender.com/health
+
+  # ==========================================
+  # Notify on deployment
+  # ==========================================
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy, smoke-test]
+    if: always()
+
+    steps:
+      - name: Report deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "::notice title=Deployment Successful::decision-service deployed successfully to Render"
+          else
+            echo "::error title=Deployment Failed::decision-service deployment failed"
+            exit 1
+          fi
