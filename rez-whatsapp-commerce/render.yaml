@@ -1,0 +1,78 @@
+# Render Blueprint for REZ WhatsApp Commerce
+
+## Overview
+This blueprint deploys the REZ WhatsApp Commerce backend service to Render.
+
+## Services
+
+### Web Service (rez-whatsapp-commerce)
+- **Type**: Web Service
+- **Runtime**: Node
+- **Build Command**: `npm run build`
+- **Start Command**: `npm start`
+- **Plan**: Starter or higher
+
+### Environment Variables
+Configure these in the Render dashboard or via this blueprint:
+
+#### Required
+- `NODE_ENV`: Set to `production`
+- `PORT`: 4031
+- `MONGODB_URI`: Your MongoDB connection string
+- `REDIS_URL`: Your Redis connection URL
+- `JWT_SECRET`: A strong random string for JWT signing
+- `RAZORPAY_KEY_ID`: Your Razorpay Key ID
+- `RAZORPAY_KEY_SECRET`: Your Razorpay Key Secret
+- `RAZORPAY_WEBHOOK_SECRET`: Your Razorpay Webhook Secret
+- `TWILIO_ACCOUNT_SID`: Your Twilio Account SID
+- `TWILIO_AUTH_TOKEN`: Your Twilio Auth Token
+- `TWILIO_WHATSAPP_PHONE_NUMBER`: Your Twilio WhatsApp number
+- `WALLET_SERVICE_URL`: URL of the REZ Wallet Service
+- `WALLET_SERVICE_TOKEN`: Internal token for wallet service communication
+- `INTERNAL_SERVICE_TOKENS_JSON`: JSON map of service tokens
+
+#### Optional
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: Token for WhatsApp webhook verification
+- `LOG_LEVEL`: Log level (default: info)
+- `LOG_FORMAT`: Log format (json or simple)
+- `RATE_LIMIT_WINDOW_MS`: Rate limit window in ms (default: 900000)
+- `RATE_LIMIT_MAX_REQUESTS`: Max requests per window (default: 100)
+
+## Health Checks
+- Health endpoint: `GET /health`
+- Readiness endpoint: `GET /ready`
+
+## Scaling
+- Auto-scaling can be enabled on the Render dashboard
+- Recommended: 1-3 instances for production
+
+## Database
+Uses MongoDB as the primary database. Configure via:
+1. Render managed MongoDB (recommended for simplicity)
+2. External MongoDB Atlas cluster
+
+## Redis Cache
+Uses Redis for caching and session management. Configure via:
+1. Render managed Redis (recommended)
+2. External Redis provider
+
+## Deploy Steps
+
+### Option 1: Deploy via Render Blueprint
+1. Connect your GitHub repository to Render
+2. Create a new Web Service from the blueprint
+3. Configure all required environment variables
+4. Deploy
+
+### Option 2: Manual Deploy
+1. Create a new Web Service on Render
+2. Connect to your GitHub repository
+3. Configure build command: `npm run build`
+4. Configure start command: `npm start`
+5. Add all environment variables
+6. Deploy
+
+## Notes
+- Webhook endpoints require a public URL. Use Render's auto-generated URL or configure a custom domain.
+- For Razorpay webhooks, register your webhook URL in the Razorpay dashboard.
+- For WhatsApp webhooks, configure the webhook URL in your Meta/Facebook Business account.

@@ -1,5 +1,6 @@
 # render.yaml - REZ ADS
-# Umbrella advertising and sponsored commerce platform
+# Real-time ad serving platform with CPC/CPM bidding and fraud detection
+
 services:
   - type: web
     name: rez-ads
@@ -14,6 +15,10 @@ services:
         value: production
       - key: PORT
         value: 4007
+      - key: SERVICE_NAME
+        value: rez-ads
+      - key: LOG_LEVEL
+        value: info
       - key: MONGODB_URI
         sync: false
       - key: REDIS_URL
@@ -21,4 +26,39 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: CORS_ORIGIN
+        sync: false
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      - key: AD_SERVER_URL
+        fromService:
+          name: rez-ads
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: FRAUD_CHECK_ENABLED
+        value: "true"
+      - key: FRAUD_CLICK_THRESHOLD
+        value: "5"
+      - key: FRAUD_WINDOW_MINUTES
+        value: "10"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+
+  # Background worker for event processing
+  - type: worker
+    name: rez-ads-worker
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run worker
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
         sync: false

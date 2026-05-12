@@ -1,0 +1,1048 @@
+openapi: 3.0.3
+info:
+  title: DOOH Service API
+  description: |
+    Digital Out of Home Advertising Network API
+
+    ## Authentication
+
+    All endpoints (except health checks) require authentication:
+
+    - **Internal Services**: Use `X-Internal-Token` header with your service token
+    - **Screen Devices**: Use `X-Api-Key` header with your screen's API key
+
+    Service tokens are configured in `INTERNAL_SERVICE_TOKENS_JSON` environment variable.
+
+  version: 1.0.0
+  contact:
+    name: DOOH Team
+    email: dooh@rezapp.com
+
+servers:
+  - url: https://dooh.rezapp.com
+    description: Production
+  - url: https://dooh-staging.rezapp.com
+    description: Staging
+  - url: http://localhost:4018
+    description: Local Development
+
+tags:
+  - name: Screens
+    description: Screen management operations
+  - name: Campaigns
+    description: Campaign management
+  - name: Analytics
+    description: Analytics and reporting
+  - name: Health
+    description: Service health checks
+
+paths:
+  /health:
+    get:
+      summary: Service health check
+      description: Returns the health status of the service
+      operationId: getHealth
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      summary: Readiness check
+      description: Returns readiness status with all dependency checks
+      operationId: getReady
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '503':
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+
+  # ==========================================================================
+  # SCREEN ENDPOINTS
+  # ==========================================================================
+
+  /api/screens:
+    get:
+      summary: List screens
+      description: Get all screens with optional filtering
+      operationId: listScreens
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/ScreenType'
+          description: Filter by screen type
+        - name: city
+          in: query
+          schema:
+            type: string
+          description: Filter by city
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ScreenStatus'
+          description: Filter by status
+        - name: owner_id
+          in: query
+          schema:
+            type: string
+          description: Filter by owner ID
+      responses:
+        '200':
+          description: List of screens
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      count:
+                        type: integer
+                      screens:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ScreenSummary'
+
+    post:
+      summary: Register screen
+      description: Register a new screen in the network
+      operationId: registerScreen
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenRegistrationRequest'
+      responses:
+        '201':
+          description: Screen registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      screen_id:
+                        type: string
+                      api_key:
+                        type: string
+                        description: Screen's unique API key (shown only once)
+                      message:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/screens/{screenId}:
+    get:
+      summary: Get screen
+      description: Get details for a specific screen
+      operationId: getScreen
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      responses:
+        '200':
+          description: Screen details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      screen:
+                        $ref: '#/components/schemas/Screen'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update screen
+      description: Update screen details
+      operationId: updateScreen
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenUpdateRequest'
+      responses:
+        '200':
+          description: Screen updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      screen:
+                        $ref: '#/components/schemas/ScreenSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete screen
+      description: Remove a screen from the network
+      operationId: deleteScreen
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      responses:
+        '200':
+          description: Screen deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/screens/{screenId}/status:
+    post:
+      summary: Update screen status
+      description: Update the operational status of a screen
+      operationId: updateScreenStatus
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/ScreenStatus'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      status:
+                        $ref: '#/components/schemas/ScreenStatus'
+                      updated_at:
+                        type: string
+                        format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/screens/{screenId}/heartbeat:
+    post:
+      summary: Screen heartbeat
+      description: |
+        Process a heartbeat from a screen device.
+        This endpoint accepts screen API keys for authentication.
+      operationId: screenHeartbeat
+      tags: [Screens]
+      security:
+        - ScreenApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequest'
+      responses:
+        '200':
+          description: Heartbeat processed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      needs_update:
+                        type: boolean
+                      content_update:
+                        type: object
+                        nullable: true
+                        properties:
+                          playlist_version:
+                            type: integer
+                          timestamp:
+                            type: string
+                            format: date-time
+
+  /api/screens/{screenId}/apikey:
+    get:
+      summary: Get screen API key
+      description: Retrieve the API key for a screen
+      operationId: getScreenApiKey
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      responses:
+        '200':
+          description: API key retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      screen_id:
+                        type: string
+                      api_key:
+                        type: string
+                      message:
+                        type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/screens/{screenId}/apikey/rotate:
+    post:
+      summary: Rotate screen API key
+      description: Invalidate the current key and generate a new one
+      operationId: rotateScreenApiKey
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      parameters:
+        - $ref: '#/components/parameters/ScreenId'
+      responses:
+        '200':
+          description: API key rotated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      screen_id:
+                        type: string
+                      api_key:
+                        type: string
+                      message:
+                        type: string
+
+  /api/screens/stats/network:
+    get:
+      summary: Network statistics
+      description: Get aggregate statistics for the entire screen network
+      operationId: getNetworkStats
+      tags: [Screens]
+      security:
+        - InternalToken: []
+      responses:
+        '200':
+          description: Network statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      stats:
+                        $ref: '#/components/schemas/NetworkStats'
+
+  # ==========================================================================
+  # ANALYTICS ENDPOINTS
+  # ==========================================================================
+
+  /api/analytics/impressions:
+    post:
+      summary: Record impressions
+      description: Record one or more impression events
+      operationId: recordImpressions
+      tags: [Analytics]
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    $ref: '#/components/schemas/ImpressionEvent'
+      responses:
+        '200':
+          description: Impressions recorded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      recorded:
+                        type: integer
+
+  # ==========================================================================
+  # CAMPAIGN ENDPOINTS
+  # ==========================================================================
+
+  /api/ads/campaigns:
+    get:
+      summary: List campaigns
+      description: Get all campaigns with optional filtering
+      operationId: listCampaigns
+      tags: [Campaigns]
+      security:
+        - InternalToken: []
+      responses:
+        '200':
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      campaigns:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DOOHCampaign'
+
+    post:
+      summary: Create campaign
+      description: Create a new advertising campaign
+      operationId: createCampaign
+      tags: [Campaigns]
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateRequest'
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      campaign_id:
+                        type: string
+
+  /api/ads/targeting/areas:
+    get:
+      summary: Get area targeting info
+      description: Get available areas for targeting
+      operationId: getAreaTargeting
+      tags: [Campaigns]
+      security:
+        - InternalToken: []
+      responses:
+        '200':
+          description: Area targeting information
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      areas:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AreaContext'
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+
+components:
+  securitySchemes:
+    InternalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+      description: Service token from INTERNAL_SERVICE_TOKENS_JSON
+
+    ScreenApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Per-screen API key
+
+  parameters:
+    ScreenId:
+      name: screenId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Unique screen identifier
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid request parameters
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: string
+                    example: Screen not found
+
+  schemas:
+    # -----------------------------------------------------------------------------
+    # Common
+    # -----------------------------------------------------------------------------
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        errorId:
+          type: string
+          description: Error ID for support tickets
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded]
+        checks:
+          type: object
+          properties:
+            screenService:
+              type: boolean
+            adDecisionService:
+              type: boolean
+            areaService:
+              type: boolean
+            personalizationService:
+              type: boolean
+            analyticsService:
+              type: boolean
+
+    # -----------------------------------------------------------------------------
+    # Screen Types
+    # -----------------------------------------------------------------------------
+
+    ScreenType:
+      type: string
+      enum:
+        - cab_tablet
+        - bus_shelter
+        - bus_interior
+        - train_display
+        - metro_screen
+        - flight_seatback
+        - flight_overhead
+        - flight_entrance
+        - flight_lavatory
+        - airport_display
+        - airport_kiosk
+        - airport_gate
+        - airport_lounge
+        - airport_billboard
+        - restaurant_tv
+        - hotel_lobby
+        - hotel_room
+        - mall_kiosk
+        - mall_directory
+        - gym_screen
+        - salon_display
+        - office_lobby
+        - office_elevator
+        - billboard_digital
+        - generic_display
+
+    ScreenStatus:
+      type: string
+      enum: [active, inactive, offline, maintenance]
+
+    ScreenNetworkType:
+      type: string
+      enum: ['1:1', mass]
+
+    ScreenLocation:
+      type: object
+      required: [city, area, lat, lng]
+      properties:
+        city:
+          type: string
+        area:
+          type: string
+        zone:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        address:
+          type: string
+
+    Screen:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ScreenType'
+        network_type:
+          $ref: '#/components/schemas/ScreenNetworkType'
+        location_type:
+          type: string
+        location:
+          $ref: '#/components/schemas/ScreenLocation'
+        owner_id:
+          type: string
+        owner_type:
+          type: string
+          enum: [owned, partner, external]
+        status:
+          $ref: '#/components/schemas/ScreenStatus'
+        cpm:
+          type: number
+        total_impressions:
+          type: integer
+        earnings_balance:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ScreenSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ScreenType'
+        network_type:
+          $ref: '#/components/schemas/ScreenNetworkType'
+        status:
+          $ref: '#/components/schemas/ScreenStatus'
+        location:
+          $ref: '#/components/schemas/ScreenLocation'
+        cpm:
+          type: number
+        total_impressions:
+          type: integer
+        total_scans:
+          type: integer
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+
+    ScreenRegistrationRequest:
+      type: object
+      required: [name, type, location, owner_id]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        type:
+          $ref: '#/components/schemas/ScreenType'
+        network_type:
+          $ref: '#/components/schemas/ScreenNetworkType'
+        location_type:
+          type: string
+        location:
+          $ref: '#/components/schemas/ScreenLocation'
+        owner_id:
+          type: string
+        owner_email:
+          type: string
+          format: email
+        owner_phone:
+          type: string
+        hardware:
+          type: object
+          properties:
+            model:
+              type: string
+            os:
+              type: string
+            resolution:
+              type: string
+            screen_size:
+              type: number
+        operating_hours:
+          type: object
+          properties:
+            open:
+              type: string
+              pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+            close:
+              type: string
+              pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+            timezone:
+              type: string
+        cpm:
+          type: number
+          minimum: 0
+
+    ScreenUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        hardware:
+          type: object
+        operating_hours:
+          type: object
+        cpm:
+          type: number
+          minimum: 0
+
+    HeartbeatRequest:
+      type: object
+      required: [screen_id]
+      properties:
+        screen_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/ScreenStatus'
+        playlist_version:
+          type: integer
+        impressions_last_hour:
+          type: integer
+          minimum: 0
+        errors:
+          type: array
+          items:
+            type: string
+
+    NetworkStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        offline:
+          type: integer
+        inactive:
+          type: integer
+        maintenance:
+          type: integer
+        by_type:
+          type: object
+          additionalProperties:
+            type: integer
+        by_city:
+          type: object
+          additionalProperties:
+            type: integer
+        total_impressions:
+          type: integer
+        total_scans:
+          type: integer
+        total_earnings:
+          type: number
+
+    # -----------------------------------------------------------------------------
+    # Campaign Types
+    # -----------------------------------------------------------------------------
+
+    DOOHCampaign:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        merchant_id:
+          type: string
+        brand_id:
+          type: string
+        creatives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Creative'
+        targeting:
+          $ref: '#/components/schemas/DOOHTargeting'
+        budget:
+          type: number
+        spent:
+          type: number
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [draft, active, paused, completed, budget_exhausted]
+        metrics:
+          $ref: '#/components/schemas/CampaignMetrics'
+        created_at:
+          type: string
+          format: date-time
+
+    Creative:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [image, video, html5]
+        url:
+          type: string
+          format: uri
+        thumbnail:
+          type: string
+          format: uri
+        name:
+          type: string
+        duration:
+          type: integer
+          description: Duration in seconds
+
+    DOOHTargeting:
+      type: object
+      properties:
+        cities:
+          type: array
+          items:
+            type: string
+        areas:
+          type: array
+          items:
+            type: string
+        screen_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScreenType'
+        audience_segments:
+          type: array
+          items:
+            type: string
+        day_parts:
+          type: object
+          properties:
+            morning:
+              type: boolean
+            afternoon:
+              type: boolean
+            evening:
+              type: boolean
+
+    CampaignMetrics:
+      type: object
+      properties:
+        impressions:
+          type: integer
+        unique_impressions:
+          type: integer
+        scans:
+          type: integer
+        visits:
+          type: integer
+        purchases:
+          type: integer
+        revenue:
+          type: number
+        scan_rate:
+          type: number
+        visit_rate:
+          type: number
+        purchase_rate:
+          type: number
+        total_spent:
+          type: number
+        cpm_actual:
+          type: number
+
+    CampaignCreateRequest:
+      type: object
+      required: [name, merchant_id, budget, start_date, end_date, targeting, creatives]
+      properties:
+        name:
+          type: string
+        merchant_id:
+          type: string
+        budget:
+          type: number
+          minimum: 0
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        targeting:
+          $ref: '#/components/schemas/DOOHTargeting'
+        screen_filter:
+          type: object
+        creatives:
+          type: array
+          items:
+            type: object
+            required: [type, url, name, duration]
+            properties:
+              type:
+                type: string
+                enum: [image, video, html5]
+              url:
+                type: string
+                format: uri
+              name:
+                type: string
+              duration:
+                type: integer
+
+    # -----------------------------------------------------------------------------
+    # Analytics Types
+    # -----------------------------------------------------------------------------
+
+    ImpressionEvent:
+      type: object
+      required: [screen_id, ad_id]
+      properties:
+        screen_id:
+          type: string
+        campaign_id:
+          type: string
+        ad_id:
+          type: string
+        user_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        duration_played:
+          type: number
+        viewable:
+          type: boolean
+
+    # -----------------------------------------------------------------------------
+    # Area Types
+    # -----------------------------------------------------------------------------
+
+    AreaContext:
+      type: object
+      properties:
+        areaId:
+          type: string
+        name:
+          type: string
+        demographics:
+          type: object
+        time_context:
+          type: object
+        top_intents:
+          type: array
+          items:
+            type: object

@@ -4,12 +4,15 @@
  * Digital Out of Home Advertising Network Service
  *
  * Combines:
- * - Screen management (from dooh/, adsos/dooh/)
- * - Ad decision engine (AdOS - adsos/)
- * - Area-based targeting (areaIntelligence)
- * - 1:1 personalization (personalization)
- * - DOOH analytics (analytics)
- * - AdQR integration (analytics)
+ * - Screen management
+ * - Ad decision engine (AdOS)
+ * - Area-based targeting
+ * - 1:1 personalization
+ * - DOOH analytics
+ * - Database persistence (MongoDB)
+ * - Caching (Redis)
+ * - Observability (Prometheus)
+ * - Error tracking (Sentry)
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
@@ -36,6 +39,17 @@ import {
   writeRateLimitMiddleware,
 } from './middleware/auth';
 
+// Database
+import { connectDatabase, disconnectDatabase } from './database';
+import { screenRepository } from './database/repositories';
+
+// Cache
+import { connectRedis, disconnectRedis, checkRateLimit as redisRateLimit } from './cache';
+
+// Observability
+import { registry, httpRequestsTotal, httpRequestDuration } from './observability/metrics';
+import { initSentry, captureException } from './observability/sentry';
+
 // Types
 import { GuardrailConfig } from './types';
 
@@ -54,6 +68,12 @@ interface DOOHServiceConfig {
     endpoint: string;
     apiKey: string;
   };
+  database?: {
+    uri?: string;
+  };
+  redis?: {
+    url?: string;
+  };
 }
 
 // ============================================================================
@@ -63,6 +83,7 @@ interface DOOHServiceConfig {
 export class DOOHService {
   private app: Express;
   private config: DOOHServiceConfig;
+  private isShuttingDown = false;
 
   // Services
   public screenService: ScreenManagementService;
@@ -107,6 +128,47 @@ export class DOOHService {
   }
 
   // -------------------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------------------
+
+  async initialize(): Promise<void> {
+    console.log('[DOOH Service] Initializing...');
+
+    // Initialize Sentry
+    initSentry({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+    });
+
+    // Connect to database
+    if (process.env.MONGODB_URI) {
+      try {
+        await connectDatabase(process.env.MONGODB_URI);
+        console.log('[DOOH Service] Database connected');
+      } catch (error) {
+        console.error('[DOOH Service] Database connection failed:', error);
+        throw error;
+      }
+    } else {
+      console.warn('[DOOH Service] MONGODB_URI not set, running without database');
+    }
+
+    // Connect to Redis
+    if (process.env.REDIS_URL) {
+      try {
+        await connectRedis({ url: process.env.REDIS_URL });
+        console.log('[DOOH Service] Redis connected');
+      } catch (error) {
+        console.warn('[DOOH Service] Redis connection failed, running without cache:', error);
+      }
+    } else {
+      console.warn('[DOOH Service] REDIS_URL not set, running without cache');
+    }
+
+    console.log('[DOOH Service] Initialization complete');
+  }
+
+  // -------------------------------------------------------------------------
   // Setup
   // -------------------------------------------------------------------------
 
@@ -134,10 +196,25 @@ export class DOOHService {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Global rate limiting
-    this.app.use(rateLimitMiddleware);
+    // Prometheus metrics middleware
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      const start = Date.now();
 
-    // Request logging with request ID
+      res.on('finish', () => {
+        const duration = Date.now() - start;
+        const path = normalizePath(req.path);
+
+        httpRequestsTotal.inc({ method: req.method, path, status: res.statusCode });
+        httpRequestDuration.observe({ method: req.method, path, status: res.statusCode }, duration / 1000);
+      });
+
+      next();
+    });
+
+    // Global rate limiting (with Redis fallback)
+    this.app.use(this.rateLimitMiddleware.bind(this));
+
+    // Request logging
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
       const requestId = (req as any).requestId;
       console.log(`[${new Date().toISOString()}] [${requestId}] ${req.method} ${req.path}`);
@@ -155,8 +232,10 @@ export class DOOHService {
     });
 
     // Ready check
-    this.app.get('/ready', (_req: Request, res: Response) => {
+    this.app.get('/ready', async (_req: Request, res: Response) => {
       const checks = {
+        database: true,
+        redis: true,
         screenService: true,
         adDecisionService: true,
         areaService: this.areaService.isConnectedToRezMind(),
@@ -164,13 +243,68 @@ export class DOOHService {
         analyticsService: true,
       };
 
+      // Check database connection
+      try {
+        await screenRepository.findAll();
+      } catch {
+        checks.database = false;
+      }
+
+      // Check Redis (best effort)
+      try {
+        const redis = await import('./cache');
+        await redis.cacheExists('health_check');
+      } catch {
+        checks.redis = false;
+      }
+
       const allHealthy = Object.values(checks).every(v => v === true);
 
       res.status(allHealthy ? 200 : 503).json({
         status: allHealthy ? 'ready' : 'degraded',
         checks,
+        timestamp: new Date().toISOString(),
       });
     });
+
+    // Prometheus metrics endpoint
+    this.app.get('/metrics', async (_req: Request, res: Response) => {
+      try {
+        res.set('Content-Type', registry.contentType);
+        res.end(await registry.metrics());
+      } catch (error) {
+        res.status(500).end();
+      }
+    });
+  }
+
+  private async rateLimitMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const ip = req.ip || 'unknown';
+    const key = `ratelimit:${ip}:${req.path}`;
+
+    try {
+      const result = await redisRateLimit(key, {
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 100,
+      });
+
+      res.setHeader('X-RateLimit-Limit', '100');
+      res.setHeader('X-RateLimit-Remaining', String(result.remaining));
+      res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
+
+      if (!result.allowed) {
+        res.status(429).json({
+          success: false,
+          error: 'Too many requests',
+          retryAfter: result.retryAfter,
+        });
+        return;
+      }
+    } catch {
+      // Redis unavailable, allow request
+    }
+
+    next();
   }
 
   private setupRoutes(): void {
@@ -218,6 +352,7 @@ export class DOOHService {
           analytics: '/api/analytics',
           health: '/health',
           ready: '/ready',
+          metrics: '/metrics',
         },
       });
     });
@@ -232,20 +367,31 @@ export class DOOHService {
       });
     });
 
-    // Error handler - Don't leak internal details
-    this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    // Global error handler
+    this.app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
       const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      console.error(`[${errorId}] Error:`, err);
+      const requestId = (req as any).requestId;
 
-      // Log full error internally for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Stack trace:', err.stack);
-      }
+      // Log to console
+      console.error(`[${errorId}] [${requestId}] Error:`, {
+        message: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method,
+      });
 
+      // Capture to Sentry
+      captureException(err, {
+        requestId,
+        path: req.path,
+        method: req.method,
+      });
+
+      // Don't leak internal details
       res.status(500).json({
         success: false,
         error: 'Internal server error',
-        errorId, // Provide error ID for support tickets
+        errorId,
       });
     });
   }
@@ -267,20 +413,51 @@ export class DOOHService {
   // Server Control
   // -------------------------------------------------------------------------
 
-  start(): Promise<void> {
+  async start(): Promise<void> {
+    // Initialize connections
+    await this.initialize();
+
+    // Setup graceful shutdown
+    this.setupGracefulShutdown();
+
+    const port = this.config.port || parseInt(process.env.PORT || '4018');
+
     return new Promise((resolve) => {
-      const port = this.config.port || 3000;
       this.app.listen(port, () => {
-        console.log(`DOOH Service started on port ${port}`);
-        console.log(`Health check: http://localhost:${port}/health`);
-        console.log(`API: http://localhost:${port}/api`);
+        console.log(`\n🚀 DOOH Service started on port ${port}`);
+        console.log(`   Health:  http://localhost:${port}/health`);
+        console.log(`   Ready:   http://localhost:${port}/ready`);
+        console.log(`   Metrics: http://localhost:${port}/metrics`);
+        console.log(`   API:     http://localhost:${port}/api\n`);
         resolve();
       });
     });
   }
 
+  private setupGracefulShutdown(): void {
+    const shutdown = async (signal: string) => {
+      if (this.isShuttingDown) return;
+      this.isShuttingDown = true;
+
+      console.log(`\n[DOOH Service] Received ${signal}, shutting down gracefully...`);
+
+      try {
+        await disconnectDatabase();
+        await disconnectRedis();
+        console.log('[DOOH Service] Cleanup complete');
+        process.exit(0);
+      } catch (error) {
+        console.error('[DOOH Service] Shutdown error:', error);
+        process.exit(1);
+      }
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+  }
+
   stop(): void {
-    // Cleanup resources
+    this.isShuttingDown = true;
     this.areaService.disconnectFromRezMind();
     console.log('DOOH Service stopped');
   }
@@ -358,3 +535,11 @@ export {
   // Types
   DOOHServiceConfig,
 } from './types';
+
+// Helper function for path normalization
+function normalizePath(path: string): string {
+  return path
+    .replace(/\/screens\/[^/]+/, '/screens/:id')
+    .replace(/\/campaigns\/[^/]+/, '/campaigns/:id')
+    .replace(/\/[0-9a-f-]{36}/gi, '/:uuid');
+}
