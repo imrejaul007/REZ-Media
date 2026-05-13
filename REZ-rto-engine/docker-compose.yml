@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  rto-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - MONGODB_URI=mongodb://mongo:27017/rez_rto_engine
+      - REDIS_URL=redis://redis:6379
+      - INTERNAL_SERVICE_TOKENS_JSON={"rez-checkout":"dev-token"}
+      - LOG_LEVEL=debug
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=rez_rto_engine
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:

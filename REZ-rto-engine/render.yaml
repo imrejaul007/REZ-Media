@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: rez-rto-engine
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3008
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      - key: FINGERPRINT_SECRET
+        sync: false
+      - key: LOG_LEVEL
+        value: warn

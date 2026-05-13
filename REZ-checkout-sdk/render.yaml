@@ -1,0 +1,63 @@
+# Render Blueprint - ReZ Checkout SDK
+# Deploy to Render using: render blue prints create
+
+services:
+  # ReZ Checkout SDK Service
+  - type: web
+    name: rez-checkout-sdk
+    env: node
+    region: singapore
+    plan: starter
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+
+    # Environment variables (set in Render dashboard for production)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: API_VERSION
+        value: v1
+      - key: ENABLE_CORS
+        value: "true"
+      - key: FRAUD_CHECK_ENABLED
+        value: "true"
+      - key: MAX_ORDERS_PER_HOUR
+        value: "10"
+      - key: MAX_ORDER_VALUE
+        value: "100000"
+      - key: PAYMENT_GATEWAY_URL
+        sync: false
+      - key: PAYMENT_GATEWAY_API_KEY
+        sync: false
+
+    # Health check
+    healthCheck:
+      enabled: true
+      path: /health
+      interval: 30
+      timeout: 10
+      failureThreshold: 3
+
+    # Scaling (optional)
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 80
+      targetCPUPercent: 70
+
+# Addons (uncomment as needed)
+# addons:
+#   - name: rez-checkout-redis
+#     plan: redis:hobbyist
+#     ipAllowList: []
