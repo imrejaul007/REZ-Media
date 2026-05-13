@@ -1,0 +1,2500 @@
+openapi: 3.0.3
+info:
+  title: ReZ Commerce Media Platform API
+  description: |
+    ## Overview
+
+    The ReZ Commerce Media Platform provides a unified API for managing advertising campaigns,
+    dynamic pricing, wallet transactions, and analytics across multiple channels including
+    In-App, DOOH, QR, Broadcast, and Offline advertising.
+
+    ## Key Features
+
+    - **Dynamic Pricing Engine**: AI-powered pricing with real-time demand, competition, and
+      seasonal multipliers
+    - **Unified Campaign Management**: Create and manage campaigns across multiple ad channels
+    - **Merchant Wallet**: Integrated wallet system for campaign budgeting and payments
+    - **Real-time Analytics**: Track impressions, clicks, conversions, and ROI
+    - **Webhook Events**: Receive real-time notifications for campaign and payment events
+
+    ## Architecture
+
+    ```
+    Client -> API Gateway -> Services
+                          ├── Pricing Engine (Port 4008)
+                          ├── Ads Service (Port 4007)
+                          ├── Ad Campaigns (Port 4008)
+                          └── Wallet Service
+    ```
+
+  version: 1.0.0
+  contact:
+    name: ReZ Developer Support
+    email: api-support@rez.money
+    url: https://developers.rez.money
+  license:
+    name: Proprietary
+    url: https://rez.money/terms
+
+servers:
+  - url: https://api.rez.money/v1
+    description: Production server
+  - url: https://api-staging.rez.money/v1
+    description: Staging server
+  - url: http://localhost:4007
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization endpoints
+  - name: Pricing
+    description: Dynamic pricing engine endpoints
+  - name: Campaigns
+    description: Campaign management endpoints
+  - name: Wallet
+    description: Merchant wallet operations
+  - name: Webhooks
+    description: Webhook configuration and events
+  - name: Health
+    description: Service health and monitoring
+
+paths:
+  # ============================================================================
+  # AUTHENTICATION
+  # ============================================================================
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate merchant
+      description: |
+        Authenticate a merchant and receive a JWT access token.
+        The token must be included in subsequent requests via the Authorization header.
+      operationId: loginMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "merchant@example.com"
+              password: "securepassword123"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: |
+        Exchange a valid refresh token for a new access token.
+        Refresh tokens are valid for 30 days.
+      operationId: refreshToken
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify:
+    post:
+      tags:
+        - Authentication
+      summary: Verify token validity
+      description: Verify if a JWT token is valid and return token metadata.
+      operationId: verifyToken
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenVerification'
+        '401':
+          description: Token is invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================================================
+  # PRICING ENDPOINTS
+  # ============================================================================
+
+  /price:
+    post:
+      tags:
+        - Pricing
+      summary: Calculate dynamic price
+      description: |
+        Calculate the dynamic price for an ad placement using the AI-powered pricing brain.
+        The pricing engine considers demand, competition, peak times, seasonality,
+        location, and quality scores.
+
+        **Supported Ad Types:**
+        - banner, feed, search, store, push, whatsapp, email, dooh, offline, qr
+
+        **Supported Goal Types:**
+        - awareness (CPM), clicks (CPC), conversions (CPA), sales (CPA),
+          footfall (CPV), qr_scans (CPS), leads (CPA)
+      operationId: calculatePrice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+            example:
+              adType: dooh
+              placement: mall_led_screen
+              location:
+                city: Mumbai
+                tier: tier1
+              targetAudience:
+                segment: young_professionals
+                income: high
+                category: retail
+              scheduledTime:
+                start: "2026-05-15T20:00:00Z"
+                end: "2026-05-15T22:00:00Z"
+              budget: 50000
+              goalType: footfall
+              campaignMode: auction
+              performanceTier: premium
+      responses:
+        '200':
+          description: Price calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Unprocessable entity - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /price/legacy:
+    post:
+      tags:
+        - Pricing
+      summary: Legacy pricing calculation
+      description: |
+        Calculate price using the legacy pricing engine.
+        Use `/price` endpoint for new integrations.
+      operationId: calculateLegacyPrice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+      responses:
+        '200':
+          description: Price calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /price/liquidation:
+    post:
+      tags:
+        - Pricing
+      summary: Calculate liquidation price
+      description: |
+        Calculate the liquidation price for unsold inventory.
+        Liquidation prices increase as the slot approaches and inventory remains unsold.
+
+        **Discount Logic:**
+        - <1 hour remaining: Up to 50% off
+        - <4 hours remaining: Up to 30% off
+        - <24 hours remaining: Up to 15% off
+        - <25% sold: Additional 25% off
+        - <50% sold: Additional 15% off
+        - <75% sold: Additional 5% off
+        - Maximum discount: 70%
+      operationId: calculateLiquidationPrice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiquidationRequest'
+            example:
+              originalPrice: 5000
+              hoursUntilSlot: 4
+              percentSold: 35
+      responses:
+        '200':
+          description: Liquidation price calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiquidationResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /price/allocate:
+    post:
+      tags:
+        - Pricing
+      summary: Smart budget allocation
+      description: |
+        Get AI-recommended budget allocation across channels based on campaign goal.
+        Returns optimal distribution percentages and estimated results for each channel.
+      operationId: allocateBudget
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetAllocationRequest'
+            example:
+              totalBudget: 50000
+              goal: conversions
+              location:
+                city: Bangalore
+                tier: tier1
+      responses:
+        '200':
+          description: Budget allocation calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetAllocationResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /price/validate:
+    post:
+      tags:
+        - Pricing
+      summary: Validate minimum spend
+      description: |
+        Validate if the proposed budget meets minimum spend requirements
+        for the specified ad type.
+      operationId: validateMinimumSpend
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateSpendRequest'
+            example:
+              adType: whatsapp
+              budget: 1500
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateSpendResponse'
+        '400':
+          description: Budget below minimum
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /price/caps:
+    get:
+      tags:
+        - Pricing
+      summary: Get price caps
+      description: |
+        Retrieve the maximum surge caps and minimum spend requirements
+        for all supported ad types.
+      operationId: getPriceCaps
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Price caps retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceCapsResponse'
+
+  # ============================================================================
+  # CAMPAIGN ENDPOINTS
+  # ============================================================================
+
+  /campaigns:
+    get:
+      tags:
+        - Campaigns
+      summary: List campaigns
+      description: |
+        Retrieve a paginated list of campaigns for the authenticated merchant.
+        Supports filtering by status, type, and date range.
+      operationId: listCampaigns
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          description: Filter by campaign status
+          schema:
+            type: string
+            enum: [active, paused, completed, cancelled, draft]
+        - name: type
+          in: query
+          description: Filter by ad type
+          schema:
+            type: string
+            enum: [banner, feed, search, store, push, whatsapp, email, dooh, offline, qr]
+        - name: startDate
+          in: query
+          description: Filter campaigns starting from this date
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter campaigns ending before this date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Campaigns retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Campaigns
+      summary: Create campaign
+      description: |
+        Create a new advertising campaign. The campaign will be validated
+        against minimum spend requirements and wallet balance.
+
+        **Campaign Lifecycle:**
+        1. Draft -> Active (after payment confirmation)
+        2. Active -> Paused (manual or automatic)
+        3. Active -> Completed (end date reached or budget exhausted)
+        4. Any state -> Cancelled (manual cancellation)
+      operationId: createCampaign
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCampaignRequest'
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignResponse'
+        '400':
+          description: Invalid request or insufficient wallet balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          description: Payment required - insufficient wallet balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/unified:
+    post:
+      tags:
+        - Campaigns
+      summary: Create unified campaign
+      description: |
+        Create a unified campaign spanning multiple channels with wallet reservation.
+        This endpoint atomically reserves budget from the merchant wallet.
+
+        **Features:**
+        - Multi-channel support
+        - Automatic budget allocation
+        - Wallet reservation with 20% buffer
+        - Pricing calculation for each channel
+      operationId: createUnifiedCampaign
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnifiedCampaignRequest'
+            example:
+              merchantId: "merchant_abc123"
+              name: "Summer Sale Campaign"
+              types: ["banner", "whatsapp", "dooh"]
+              channels: ["in_app", "broadcast", "dooh"]
+              budget: 50000
+              duration: 7
+              location: "Mumbai"
+              targeting:
+                segment: "young_professionals"
+                income: "high"
+      responses:
+        '201':
+          description: Unified campaign created with reservation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnifiedCampaignResponse'
+        '400':
+          description: Budget below minimum or invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          description: Insufficient wallet balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}:
+    get:
+      tags:
+        - Campaigns
+      summary: Get campaign details
+      description: Retrieve detailed information about a specific campaign.
+      operationId: getCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Campaign details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignResponse'
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Campaigns
+      summary: Update campaign
+      description: |
+        Update campaign settings. Only certain fields can be modified
+        depending on campaign status.
+      operationId: updateCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCampaignRequest'
+      responses:
+        '200':
+          description: Campaign updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignResponse'
+        '400':
+          description: Invalid update
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Campaigns
+      summary: Delete campaign
+      description: Delete a campaign. Only draft campaigns can be deleted.
+      operationId: deleteCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Campaign deleted
+        '400':
+          description: Cannot delete non-draft campaign
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}/status:
+    get:
+      tags:
+        - Campaigns
+      summary: Get campaign status
+      description: |
+        Get detailed campaign status including sub-campaign statuses
+        and wallet usage metrics.
+      operationId: getCampaignStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Campaign status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignStatusResponse'
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}/pause:
+    post:
+      tags:
+        - Campaigns
+      summary: Pause campaign
+      description: |
+        Pause an active campaign. Billing stops but the campaign
+        can be resumed later. Reserved wallet funds remain locked.
+      operationId: pauseCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Campaign paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignResponse'
+        '400':
+          description: Campaign not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}/resume:
+    post:
+      tags:
+        - Campaigns
+      summary: Resume campaign
+      description: Resume a paused campaign. Billing resumes from the pause point.
+      operationId: resumeCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Campaign resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignResponse'
+        '400':
+          description: Campaign not paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}/cancel:
+    post:
+      tags:
+        - Campaigns
+      summary: Cancel campaign
+      description: |
+        Cancel a campaign and release unused wallet reservation.
+        Billing stops immediately and remaining funds are returned to wallet.
+      operationId: cancelCampaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Campaign cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignCancellationResponse'
+        '400':
+          description: Campaign already cancelled or completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /campaigns/{id}/stats:
+    get:
+      tags:
+        - Campaigns
+      summary: Get campaign statistics
+      description: |
+        Get detailed statistics for a campaign including impressions,
+        clicks, conversions, spend, and engagement metrics.
+      operationId: getCampaignStats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Campaign ID
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Start date for statistics
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date for statistics
+          schema:
+            type: string
+            format: date
+        - name: granularity
+          in: query
+          description: Data granularity
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+            default: day
+      responses:
+        '200':
+          description: Campaign statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignStatsResponse'
+        '404':
+          description: Campaign not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================================================
+  # WALLET ENDPOINTS
+  # ============================================================================
+
+  /wallet/balance:
+    get:
+      tags:
+        - Wallet
+      summary: Get wallet balance
+      description: |
+        Retrieve the current wallet balance and breakdown including
+        available balance, reserved amount, and pending transactions.
+      operationId: getWalletBalance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: true
+          description: Merchant ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wallet balance retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBalanceResponse'
+        '404':
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /wallet/deposit:
+    post:
+      tags:
+        - Wallet
+      summary: Add funds to wallet
+      description: |
+        Add funds to the merchant wallet using various payment methods.
+        Supports UPI, cards, and net banking.
+      operationId: depositFunds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+            example:
+              merchantId: "merchant_abc123"
+              amount: 50000
+              paymentMethod: upi
+              reference: "order_xyz789"
+      responses:
+        '200':
+          description: Funds added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
+        '400':
+          description: Invalid payment or amount
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /wallet/reserve:
+    post:
+      tags:
+        - Wallet
+      summary: Reserve budget
+      description: |
+        Reserve funds from wallet for a campaign. Reserved funds are
+        locked and deducted as the campaign runs.
+
+        **Reservation Behavior:**
+        - Reserved amount is immediately locked
+        - Deductions occur based on actual spend (CPM/CPC/CPA)
+        - Unused portion released on campaign end/cancel
+      operationId: reserveFunds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveRequest'
+            example:
+              merchantId: "merchant_abc123"
+              amount: 10000
+              campaignId: "camp_xyz123"
+              purpose: ad_campaign
+      responses:
+        '200':
+          description: Funds reserved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReserveResponse'
+        '400':
+          description: Insufficient balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /wallet/deduct:
+    post:
+      tags:
+        - Wallet
+      summary: Deduct from wallet
+      description: |
+        Deduct funds from reserved wallet balance for campaign charges.
+        This is typically called by billing services as impressions/clicks/conversions occur.
+      operationId: deductFunds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeductRequest'
+            example:
+              merchantId: "merchant_abc123"
+              amount: 100
+              campaignId: "camp_xyz123"
+              reason: impression_charge
+              eventId: "evt_abc123"
+      responses:
+        '200':
+          description: Funds deducted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeductResponse'
+        '400':
+          description: Invalid deduction or insufficient reserved balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /wallet/release:
+    post:
+      tags:
+        - Wallet
+      summary: Release reservation
+      description: |
+        Release unused reserved funds back to available balance.
+        Called when a campaign ends or is cancelled.
+      operationId: releaseFunds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseRequest'
+            example:
+              merchantId: "merchant_abc123"
+              reservationId: "res_xyz123"
+      responses:
+        '200':
+          description: Funds released successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseResponse'
+        '400':
+          description: Invalid reservation or already released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /wallet/transactions:
+    get:
+      tags:
+        - Wallet
+      summary: List transactions
+      description: Retrieve a paginated list of wallet transactions.
+      operationId: listTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: merchantId
+          in: query
+          required: true
+          description: Merchant ID
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            type: string
+            enum: [deposit, withdrawal, reservation, deduction, release, refund]
+        - name: startDate
+          in: query
+          description: Start date filter
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date filter
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Transactions retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionListResponse'
+
+  # ============================================================================
+  # WEBHOOK ENDPOINTS
+  # ============================================================================
+
+  /webhooks:
+    get:
+      tags:
+        - Webhooks
+      summary: List webhooks
+      description: List all configured webhooks for the merchant.
+      operationId: listWebhooks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Webhooks retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookListResponse'
+
+    post:
+      tags:
+        - Webhooks
+      summary: Register webhook
+      description: |
+        Register a new webhook endpoint to receive event notifications.
+        Supported events include campaign.status_changed, wallet.transaction,
+        payment.completed, and more.
+      operationId: registerWebhook
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRequest'
+            example:
+              url: "https://merchant.example.com/webhooks/rez"
+              events: ["campaign.status_changed", "wallet.transaction", "payment.completed"]
+              secret: "whsec_abc123def456"
+              active: true
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '400':
+          description: Invalid webhook configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/{id}:
+    get:
+      tags:
+        - Webhooks
+      summary: Get webhook
+      description: Get details of a specific webhook.
+      operationId: getWebhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Webhook ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '404':
+          description: Webhook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Webhooks
+      summary: Update webhook
+      description: Update webhook configuration.
+      operationId: updateWebhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Webhook ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookRequest'
+      responses:
+        '200':
+          description: Webhook updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+
+    delete:
+      tags:
+        - Webhooks
+      summary: Delete webhook
+      description: Delete a webhook registration.
+      operationId: deleteWebhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Webhook ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Webhook deleted
+
+  /webhooks/events:
+    post:
+      tags:
+        - Webhooks
+      summary: Webhook event receiver
+      description: |
+        Endpoint for ReZ to send webhook events.
+        This endpoint is used internally by ReZ services to trigger webhooks.
+
+        **Event Types:**
+        - campaign.created, campaign.status_changed, campaign.paused, campaign.resumed, campaign.cancelled, campaign.completed
+        - wallet.reserved, wallet.deducted, wallet.released, wallet.deposited
+        - payment.initiated, payment.completed, payment.failed
+        - conversion.created, conversion.attributed
+      operationId: receiveWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEvent'
+      responses:
+        '200':
+          description: Event acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    example: true
+
+  # ============================================================================
+  # HEALTH ENDPOINTS
+  # ============================================================================
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns service health status. Does not require authentication.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: |
+        Returns detailed health status including database and Redis connectivity.
+        Does not require authentication.
+      operationId: detailedHealthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: |
+        Returns Prometheus-format metrics for monitoring.
+        Does not require authentication.
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from the `/auth/login` endpoint.
+        Include as: `Authorization: Bearer <token>`
+
+  schemas:
+
+    # --------------------------------------------------------------------------
+    # Common
+    # --------------------------------------------------------------------------
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code (e.g., "INVALID_REQUEST", "UNAUTHORIZED")
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for support reference
+
+    ValidationError:
+      type: object
+      required:
+        - code
+        - message
+        - errors
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Request validation failed"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    # --------------------------------------------------------------------------
+    # Authentication
+    # --------------------------------------------------------------------------
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Merchant email address
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Merchant password
+
+    LoginResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+        refreshToken:
+          type: string
+          description: Refresh token for token renewal
+        expiresIn:
+          type: integer
+          description: Access token expiry in seconds
+        tokenType:
+          type: string
+          example: "Bearer"
+        merchant:
+          $ref: '#/components/schemas/MerchantInfo'
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Valid refresh token
+
+    TokenVerification:
+      type: object
+      required:
+        - valid
+        - expiresAt
+      properties:
+        valid:
+          type: boolean
+        merchantId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        issuedAt:
+          type: string
+          format: date-time
+        scopes:
+          type: array
+          items:
+            type: string
+
+    MerchantInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        businessType:
+          type: string
+        tier:
+          type: string
+          enum: [basic, standard, premium, enterprise]
+
+    # --------------------------------------------------------------------------
+    # Pricing
+    # --------------------------------------------------------------------------
+
+    PricingRequest:
+      type: object
+      required:
+        - adType
+        - goalType
+        - campaignMode
+      properties:
+        adType:
+          type: string
+          enum: [banner, feed, search, store, push, whatsapp, email, dooh, offline, qr]
+          description: Type of advertisement
+        placement:
+          type: string
+          description: Specific placement identifier (e.g., "mall_led_screen")
+        location:
+          $ref: '#/components/schemas/Location'
+        targetAudience:
+          $ref: '#/components/schemas/Audience'
+        scheduledTime:
+          $ref: '#/components/schemas/TimeSlot'
+        budget:
+          type: number
+          minimum: 0
+          description: Proposed campaign budget in INR
+        goalType:
+          type: string
+          enum: [awareness, clicks, conversions, sales, footfall, qr_scans, leads]
+          description: Campaign optimization goal
+        vendorMinimumPrice:
+          type: number
+          description: Minimum acceptable price for vendor
+        campaignMode:
+          type: string
+          enum: [auction, reserved]
+          description: Pricing mode - auction or reserved
+        performanceTier:
+          type: string
+          enum: [basic, smart, premium, enterprise]
+          description: Performance guarantee tier
+
+    Location:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City name
+        area:
+          type: string
+          description: Specific area or neighborhood
+        tier:
+          type: string
+          enum: [tier1, tier2, tier3]
+          description: City tier classification
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+
+    Audience:
+      type: object
+      properties:
+        segment:
+          type: string
+          description: Audience segment (e.g., "young_professionals")
+        income:
+          type: string
+          enum: [low, medium, high]
+          description: Income level
+        ageGroup:
+          type: string
+          description: Age group target
+        category:
+          type: string
+          enum: [luxury, real_estate, restaurant, events, healthcare, retail, services]
+
+    TimeSlot:
+      type: object
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+
+    PricingResponse:
+      type: object
+      required:
+        - finalPrice
+        - unit
+        - validUntil
+      properties:
+        finalPrice:
+          type: number
+          description: Calculated final price per unit
+        unit:
+          type: string
+          enum: [CPM, CPC, CPA, CPV, CPS]
+          description: Pricing unit
+        basePrice:
+          type: number
+          description: Base price before multipliers
+        maxCap:
+          type: number
+          description: Maximum allowed price (safety cap)
+        floorPrice:
+          type: number
+          description: Minimum allowed price
+        qualityScore:
+          type: number
+          description: Quality score (0.5 - 2.0)
+        effectivePrice:
+          type: number
+          description: Price adjusted for quality score
+        confidenceScore:
+          type: number
+          description: Confidence in pricing calculation (0 - 1)
+        multipliers:
+          $ref: '#/components/schemas/Multipliers'
+        breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/BreakdownItem'
+        auctionDetails:
+          $ref: '#/components/schemas/AuctionDetails'
+        performanceGuarantee:
+          $ref: '#/components/schemas/PerformanceMetrics'
+        recommendedBid:
+          type: number
+          description: Recommended bid (15% above final price)
+        estimatedResults:
+          $ref: '#/components/schemas/EstimatedResults'
+        validUntil:
+          type: string
+          format: date-time
+          description: Price validity timestamp
+
+    Multipliers:
+      type: object
+      properties:
+        demand:
+          type: number
+          description: Demand multiplier
+        competition:
+          type: number
+          description: Competition intensity multiplier
+        peakTime:
+          type: number
+          description: Time-of-day multiplier
+        dayOfWeek:
+          type: number
+          description: Day-of-week multiplier
+        seasonal:
+          type: number
+          description: Seasonal multiplier
+        location:
+          type: number
+          description: Location multiplier
+        category:
+          type: number
+          description: Category premium multiplier
+        weather:
+          type: number
+          description: Weather condition multiplier
+        event:
+          type: number
+          description: Local event multiplier
+        quality:
+          type: number
+          description: Quality score multiplier
+        confidence:
+          type: number
+          description: Confidence dampening multiplier
+
+    BreakdownItem:
+      type: object
+      properties:
+        component:
+          type: string
+          description: Name of the pricing component
+        multiplier:
+          type: number
+          description: Applied multiplier value
+        contribution:
+          type: number
+          description: Price contribution from this component
+        capped:
+          type: boolean
+          description: Whether this component hit a cap
+
+    AuctionDetails:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [auction, reserved]
+        competingAds:
+          type: integer
+          description: Number of competing ads in auction
+        yourRank:
+          type: integer
+          description: Your ad's rank in the auction
+        winningBid:
+          type: number
+          description: Current winning bid
+        reservePrice:
+          type: number
+          description: Auction reserve price
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        tier:
+          type: string
+        guarantee:
+          type: string
+        estimatedClicks:
+          type: integer
+        estimatedConversions:
+          type: integer
+        minimumClicks:
+          type: integer
+        minimumConversions:
+          type: integer
+
+    EstimatedResults:
+      type: object
+      properties:
+        reach:
+          type: integer
+          description: Estimated total reach
+        clicks:
+          type: integer
+          description: Estimated clicks
+        conversions:
+          type: integer
+          description: Estimated conversions
+        visits:
+          type: integer
+          description: Estimated visits (for footfall)
+        scans:
+          type: integer
+          description: Estimated QR scans
+
+    LiquidationRequest:
+      type: object
+      required:
+        - originalPrice
+        - hoursUntilSlot
+        - percentSold
+      properties:
+        originalPrice:
+          type: number
+          description: Original price in INR
+        hoursUntilSlot:
+          type: number
+          description: Hours remaining until the slot
+        percentSold:
+          type: number
+          description: Percentage of inventory sold (0-100)
+
+    LiquidationResponse:
+      type: object
+      properties:
+        originalPrice:
+          type: number
+        liquidationPrice:
+          type: number
+        discountPercent:
+          type: number
+        reason:
+          type: string
+
+    BudgetAllocationRequest:
+      type: object
+      required:
+        - totalBudget
+        - goal
+        - location
+      properties:
+        totalBudget:
+          type: number
+          description: Total budget in INR
+        goal:
+          type: string
+          enum: [awareness, clicks, conversions, sales, footfall, qr_scans, leads]
+        location:
+          type: string
+          description: Target location
+
+    BudgetAllocationResponse:
+      type: object
+      properties:
+        allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetAllocation'
+
+    BudgetAllocation:
+      type: object
+      properties:
+        channel:
+          type: string
+        amount:
+          type: number
+          description: Allocated amount in INR
+        percentage:
+          type: number
+          description: Percentage of total budget
+        estimatedReach:
+          type: integer
+        estimatedClicks:
+          type: integer
+        estimatedConversions:
+          type: integer
+        cpm:
+          type: number
+
+    ValidateSpendRequest:
+      type: object
+      required:
+        - adType
+        - budget
+      properties:
+        adType:
+          type: string
+          enum: [banner, feed, search, store, push, whatsapp, email, dooh, offline, qr]
+        budget:
+          type: number
+
+    ValidateSpendResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        minimum:
+          type: number
+          description: Minimum required spend
+        message:
+          type: string
+
+    PriceCapsResponse:
+      type: object
+      properties:
+        maxSurgeCaps:
+          type: object
+          additionalProperties:
+            type: string
+        minimumSpend:
+          type: object
+          additionalProperties:
+            type: string
+
+    # --------------------------------------------------------------------------
+    # Campaigns
+    # --------------------------------------------------------------------------
+
+    CreateCampaignRequest:
+      type: object
+      required:
+        - name
+        - adType
+        - budget
+        - goalType
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Campaign name
+        adType:
+          type: string
+          enum: [banner, feed, search, store, push, whatsapp, email, dooh, offline, qr]
+        placement:
+          type: string
+          description: Specific placement ID
+        budget:
+          type: number
+          minimum: 0
+          description: Campaign budget in INR
+        duration:
+          type: integer
+          description: Campaign duration in days
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        location:
+          $ref: '#/components/schemas/Location'
+        targeting:
+          $ref: '#/components/schemas/Audience'
+        creative:
+          $ref: '#/components/schemas/CampaignCreative'
+        goalType:
+          type: string
+          enum: [awareness, clicks, conversions, sales, footfall, qr_scans, leads]
+        campaignMode:
+          type: string
+          enum: [auction, reserved]
+          default: auction
+
+    CampaignCreative:
+      type: object
+      properties:
+        headline:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        ctaText:
+          type: string
+        landingUrl:
+          type: string
+          format: uri
+
+    UpdateCampaignRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        budget:
+          type: number
+        status:
+          type: string
+          enum: [paused, active]
+        endDate:
+          type: string
+          format: date
+        targeting:
+          $ref: '#/components/schemas/Audience'
+        creative:
+          $ref: '#/components/schemas/CampaignCreative'
+
+    CampaignResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        merchantId:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, paused, completed, cancelled]
+        adType:
+          type: string
+        budget:
+          type: number
+        spent:
+          type: number
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CampaignListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampaignResponse'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UnifiedCampaignRequest:
+      type: object
+      required:
+        - merchantId
+        - types
+        - budget
+      properties:
+        merchantId:
+          type: string
+        name:
+          type: string
+        types:
+          type: array
+          items:
+            type: string
+            enum: [banner, feed, search, store, push, whatsapp, email, dooh, offline, qr]
+        channels:
+          type: array
+          items:
+            type: string
+        budget:
+          type: number
+        duration:
+          type: integer
+        location:
+          type: string
+        targeting:
+          type: object
+
+    UnifiedCampaignResponse:
+      type: object
+      properties:
+        campaignId:
+          type: string
+        reservationId:
+          type: string
+        totalEstimate:
+          type: number
+        walletRequired:
+          type: number
+        channelPricing:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              estimatedPrice:
+                type: number
+              unit:
+                type: string
+              reach:
+                type: integer
+        message:
+          type: string
+
+    CampaignStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        subCampaigns:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              status:
+                type: string
+              spent:
+                type: number
+        walletUsage:
+          type: object
+          properties:
+            reserved:
+              type: number
+            spent:
+              type: number
+            remaining:
+              type: number
+
+    CampaignCancellationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          example: cancelled
+        refundedAmount:
+          type: number
+          description: Amount returned to wallet
+
+    CampaignStatsResponse:
+      type: object
+      properties:
+        campaignId:
+          type: string
+        summary:
+          type: object
+          properties:
+            impressions:
+              type: integer
+            clicks:
+              type: integer
+            conversions:
+              type: integer
+            spend:
+              type: number
+            ctr:
+              type: number
+            cpc:
+              type: number
+            cpa:
+              type: number
+        timeSeries:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              impressions:
+                type: integer
+              clicks:
+                type: integer
+              conversions:
+                type: integer
+              spend:
+                type: number
+
+    # --------------------------------------------------------------------------
+    # Wallet
+    # --------------------------------------------------------------------------
+
+    WalletBalanceResponse:
+      type: object
+      properties:
+        merchantId:
+          type: string
+        balance:
+          type: number
+          description: Total balance
+        available:
+          type: number
+          description: Available for spending
+        reserved:
+          type: number
+          description: Locked for campaigns
+        pending:
+          type: number
+          description: Pending transactions
+        currency:
+          type: string
+          example: INR
+        lastUpdated:
+          type: string
+          format: date-time
+
+    DepositRequest:
+      type: object
+      required:
+        - merchantId
+        - amount
+        - paymentMethod
+      properties:
+        merchantId:
+          type: string
+        amount:
+          type: number
+          minimum: 1
+        paymentMethod:
+          type: string
+          enum: [upi, card, netbanking, bank_transfer]
+        reference:
+          type: string
+          description: External payment reference
+
+    DepositResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        amount:
+          type: number
+        newBalance:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    ReserveRequest:
+      type: object
+      required:
+        - merchantId
+        - amount
+        - campaignId
+        - purpose
+      properties:
+        merchantId:
+          type: string
+        amount:
+          type: number
+        campaignId:
+          type: string
+        purpose:
+          type: string
+          enum: [ad_campaign, feature_highlight, sponsored_content]
+
+    ReserveResponse:
+      type: object
+      properties:
+        reservationId:
+          type: string
+        amount:
+          type: number
+        remainingBalance:
+          type: number
+        expiresAt:
+          type: string
+          format: date-time
+
+    DeductRequest:
+      type: object
+      required:
+        - merchantId
+        - amount
+        - campaignId
+        - reason
+      properties:
+        merchantId:
+          type: string
+        amount:
+          type: number
+        campaignId:
+          type: string
+        reason:
+          type: string
+          enum: [impression_charge, click_charge, conversion_charge, visit_charge, scan_charge]
+        eventId:
+          type: string
+          description: Unique event ID for deduplication
+
+    DeductResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        amount:
+          type: number
+        remainingReserved:
+          type: number
+        remainingAvailable:
+          type: number
+
+    ReleaseRequest:
+      type: object
+      required:
+        - merchantId
+        - reservationId
+      properties:
+        merchantId:
+          type: string
+        reservationId:
+          type: string
+
+    ReleaseResponse:
+      type: object
+      properties:
+        releasedAmount:
+          type: number
+        newAvailableBalance:
+          type: number
+        transactionId:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [deposit, withdrawal, reservation, deduction, release, refund]
+        amount:
+          type: number
+        balance:
+          type: number
+        description:
+          type: string
+        campaignId:
+          type: string
+        reference:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    TransactionListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # --------------------------------------------------------------------------
+    # Webhooks
+    # --------------------------------------------------------------------------
+
+    WebhookRequest:
+      type: object
+      required:
+        - url
+        - events
+      properties:
+        url:
+          type: string
+          format: uri
+          description: HTTPS endpoint to receive events
+        events:
+          type: array
+          items:
+            type: string
+            enum:
+              - campaign.created
+              - campaign.status_changed
+              - campaign.paused
+              - campaign.resumed
+              - campaign.cancelled
+              - campaign.completed
+              - wallet.reserved
+              - wallet.deducted
+              - wallet.released
+              - wallet.deposited
+              - payment.initiated
+              - payment.completed
+              - payment.failed
+              - conversion.created
+              - conversion.attributed
+        secret:
+          type: string
+          description: Shared secret for signature verification
+        active:
+          type: boolean
+          default: true
+
+    UpdateWebhookRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+        active:
+          type: boolean
+
+    WebhookResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastDeliveryAt:
+          type: string
+          format: date-time
+        successRate:
+          type: number
+
+    WebhookListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookResponse'
+
+    WebhookEvent:
+      type: object
+      required:
+        - id
+        - event
+        - timestamp
+      properties:
+        id:
+          type: string
+          description: Unique event ID
+        event:
+          type: string
+          description: Event type
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          description: Event-specific payload
+        merchantId:
+          type: string
+        campaignId:
+          type: string
+
+    # --------------------------------------------------------------------------
+    # Health
+    # --------------------------------------------------------------------------
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unhealthy]
+        service:
+          type: string
+        uptime:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    DetailedHealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime:
+          type: number
+        checks:
+          type: object
+          properties:
+            database:
+              type: object
+              properties:
+                status:
+                  type: string
+                latencyMs:
+                  type: integer
+                error:
+                  type: string
+            redis:
+              type: object
+              properties:
+                status:
+                  type: string
+                latencyMs:
+                  type: integer
+                error:
+                  type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  parameters:
+    merchantId:
+      name: merchantId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Merchant unique identifier
+
+    campaignId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Campaign unique identifier
+
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+security:
+  - bearerAuth: []

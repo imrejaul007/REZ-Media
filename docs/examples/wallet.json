@@ -1,0 +1,217 @@
+{
+  "description": "Wallet API request/response examples",
+  "examples": [
+    {
+      "title": "Get Wallet Balance",
+      "request": {
+        "method": "GET",
+        "path": "/v1/wallet/balance?merchantId=merchant_xyz789",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "balance": 50000.00,
+          "available": 35000.00,
+          "reserved": 15000.00,
+          "pending": 0.00,
+          "currency": "INR",
+          "lastUpdated": "2026-05-13T10:30:00Z"
+        }
+      }
+    },
+    {
+      "title": "Deposit Funds",
+      "request": {
+        "method": "POST",
+        "path": "/v1/wallet/deposit",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "amount": 50000,
+          "paymentMethod": "upi",
+          "reference": "order_abc123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "transactionId": "txn_def456",
+            "amount": 50000.00,
+            "newBalance": 100000.00,
+            "timestamp": "2026-05-13T10:30:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Reserve Funds for Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/wallet/reserve",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "amount": 10000,
+          "campaignId": "camp_abc123",
+          "purpose": "ad_campaign"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "reservationId": "res_ghi789",
+            "amount": 10000.00,
+            "remainingBalance": 40000.00,
+            "expiresAt": "2026-05-20T10:30:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Deduct Funds",
+      "request": {
+        "method": "POST",
+        "path": "/v1/wallet/deduct",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "amount": 100,
+          "campaignId": "camp_abc123",
+          "reason": "impression_charge",
+          "eventId": "evt_unique123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "transactionId": "txn_jkl012",
+            "amount": 100.00,
+            "remainingReserved": 9900.00,
+            "remainingAvailable": 40000.00
+          }
+        }
+      }
+    },
+    {
+      "title": "Release Reservation",
+      "request": {
+        "method": "POST",
+        "path": "/v1/wallet/release",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "reservationId": "res_ghi789"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "releasedAmount": 4500.00,
+            "newAvailableBalance": 44500.00,
+            "transactionId": "txn_mno345"
+          }
+        }
+      }
+    },
+    {
+      "title": "List Transactions",
+      "request": {
+        "method": "GET",
+        "path": "/v1/wallet/transactions?merchantId=merchant_xyz789&page=1&limit=20&type=deduction",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "txn_mno345",
+              "type": "release",
+              "amount": 4500.00,
+              "balance": 44500.00,
+              "description": "Unused reservation released",
+              "campaignId": "camp_abc123",
+              "reference": "res_ghi789",
+              "timestamp": "2026-05-13T10:30:00Z"
+            },
+            {
+              "id": "txn_jkl012",
+              "type": "deduction",
+              "amount": 100.00,
+              "balance": 40000.00,
+              "description": "Impression charges",
+              "campaignId": "camp_abc123",
+              "reference": "evt_unique123",
+              "timestamp": "2026-05-13T10:00:00Z"
+            },
+            {
+              "id": "txn_ghi789",
+              "type": "reservation",
+              "amount": 10000.00,
+              "balance": 40100.00,
+              "description": "Funds reserved for campaign",
+              "campaignId": "camp_abc123",
+              "timestamp": "2026-05-13T09:00:00Z"
+            }
+          ],
+          "pagination": {
+            "page": 1,
+            "limit": 20,
+            "total": 45,
+            "totalPages": 3
+          }
+        }
+      }
+    },
+    {
+      "title": "Insufficient Balance Error",
+      "request": {
+        "method": "POST",
+        "path": "/v1/wallet/reserve",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "amount": 100000,
+          "campaignId": "camp_abc123",
+          "purpose": "ad_campaign"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "code": "INSUFFICIENT_BALANCE",
+          "message": "Not enough available funds. Required: 100000, Available: 40000"
+        }
+      }
+    }
+  ]
+}

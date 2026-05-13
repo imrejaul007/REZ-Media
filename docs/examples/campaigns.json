@@ -1,0 +1,329 @@
+{
+  "description": "Campaign API request/response examples",
+  "examples": [
+    {
+      "title": "Create WhatsApp Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/campaigns",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Weekend Special Offer",
+          "adType": "whatsapp",
+          "budget": 15000,
+          "duration": 7,
+          "goalType": "conversions",
+          "location": {
+            "city": "Bangalore",
+            "tier": "tier1"
+          },
+          "targeting": {
+            "segment": "food_enthusiasts",
+            "income": "medium",
+            "category": "restaurant"
+          },
+          "creative": {
+            "headline": "20% Off This Weekend!",
+            "description": "Use code WEEKEND20 at checkout",
+            "ctaText": "Order Now"
+          },
+          "campaignMode": "auction"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "camp_new789",
+            "merchantId": "merchant_xyz789",
+            "name": "Weekend Special Offer",
+            "status": "draft",
+            "adType": "whatsapp",
+            "budget": 15000.00,
+            "spent": 0.00,
+            "startDate": null,
+            "endDate": "2026-05-20T23:59:59Z",
+            "createdAt": "2026-05-13T10:30:00Z",
+            "updatedAt": "2026-05-13T10:30:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Create DOOH Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/campaigns",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Mall Display - Summer Collection",
+          "adType": "dooh",
+          "placement": "mall_led_screen",
+          "budget": 25000,
+          "duration": 7,
+          "goalType": "footfall",
+          "location": {
+            "city": "Mumbai",
+            "area": "Phoenix Mall",
+            "tier": "tier1"
+          },
+          "targeting": {
+            "segment": "fashion_conscious",
+            "income": "high"
+          },
+          "creative": {
+            "headline": "Summer Collection is Here!",
+            "description": "Up to 40% off on select styles",
+            "ctaText": "Visit Store"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "camp_dooh123",
+            "merchantId": "merchant_xyz789",
+            "name": "Mall Display - Summer Collection",
+            "status": "draft",
+            "adType": "dooh",
+            "budget": 25000.00,
+            "spent": 0.00,
+            "startDate": null,
+            "endDate": "2026-05-20T21:00:00Z",
+            "createdAt": "2026-05-13T10:35:00Z",
+            "updatedAt": "2026-05-13T10:35:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Create Unified Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/campaigns/unified",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "merchantId": "merchant_xyz789",
+          "name": "Grand Opening - Multi-Channel",
+          "types": ["whatsapp", "dooh", "push"],
+          "channels": ["broadcast", "dooh", "notification"],
+          "budget": 75000,
+          "duration": 14,
+          "location": "Delhi",
+          "targeting": {
+            "segment": "families",
+            "income": "medium"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "campaignId": "camp_multi123",
+            "reservationId": "res_abc456",
+            "totalEstimate": 62500,
+            "walletRequired": 75000,
+            "channelPricing": [
+              {
+                "type": "whatsapp",
+                "estimatedPrice": 1.25,
+                "unit": "CPA",
+                "reach": 50000
+              },
+              {
+                "type": "dooh",
+                "estimatedPrice": 450.00,
+                "unit": "CPV",
+                "reach": 5000
+              },
+              {
+                "type": "push",
+                "estimatedPrice": 0.30,
+                "unit": "CPA",
+                "reach": 100000
+              }
+            ],
+            "message": "Funds reserved from merchant wallet"
+          }
+        }
+      }
+    },
+    {
+      "title": "List Campaigns",
+      "request": {
+        "method": "GET",
+        "path": "/v1/campaigns?page=1&limit=20&status=active",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "camp_abc123",
+              "merchantId": "merchant_xyz789",
+              "name": "Summer Sale 2026",
+              "status": "active",
+              "adType": "whatsapp",
+              "budget": 25000.00,
+              "spent": 8500.00,
+              "startDate": "2026-05-01T00:00:00Z",
+              "endDate": "2026-05-31T23:59:59Z",
+              "createdAt": "2026-04-28T10:30:00Z",
+              "updatedAt": "2026-05-13T08:00:00Z"
+            }
+          ],
+          "pagination": {
+            "page": 1,
+            "limit": 20,
+            "total": 1,
+            "totalPages": 1
+          }
+        }
+      }
+    },
+    {
+      "title": "Get Campaign Status",
+      "request": {
+        "method": "GET",
+        "path": "/v1/campaigns/camp_multi123/status",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "camp_multi123",
+            "status": "active",
+            "subCampaigns": [
+              {
+                "type": "whatsapp",
+                "status": "active",
+                "spent": 3500
+              },
+              {
+                "type": "dooh",
+                "status": "active",
+                "spent": 8000
+              },
+              {
+                "type": "push",
+                "status": "active",
+                "spent": 500
+              }
+            ],
+            "walletUsage": {
+              "reserved": 75000,
+              "spent": 12000,
+              "remaining": 63000
+            }
+          }
+        }
+      }
+    },
+    {
+      "title": "Get Campaign Statistics",
+      "request": {
+        "method": "GET",
+        "path": "/v1/campaigns/camp_abc123/stats?startDate=2026-05-01&endDate=2026-05-13&granularity=day",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "campaignId": "camp_abc123",
+            "summary": {
+              "impressions": 125000,
+              "clicks": 3750,
+              "conversions": 150,
+              "spend": 8500.00,
+              "ctr": 3.0,
+              "cpc": 2.27,
+              "cpa": 56.67
+            },
+            "timeSeries": [
+              {
+                "date": "2026-05-01",
+                "impressions": 15000,
+                "clicks": 450,
+                "conversions": 18,
+                "spend": 1020.00
+              },
+              {
+                "date": "2026-05-02",
+                "impressions": 18000,
+                "clicks": 540,
+                "conversions": 22,
+                "spend": 1224.00
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Pause Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/campaigns/camp_abc123/pause",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "camp_abc123",
+            "status": "paused"
+          }
+        }
+      }
+    },
+    {
+      "title": "Cancel Campaign",
+      "request": {
+        "method": "POST",
+        "path": "/v1/campaigns/camp_abc123/cancel",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "camp_abc123",
+            "status": "cancelled",
+            "refundedAmount": 16500.00
+          }
+        }
+      }
+    }
+  ]
+}

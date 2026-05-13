@@ -1,0 +1,293 @@
+{
+  "description": "Pricing API request/response examples",
+  "examples": [
+    {
+      "title": "Calculate DOOH Price",
+      "request": {
+        "method": "POST",
+        "path": "/v1/price",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "adType": "dooh",
+          "placement": "mall_led_screen",
+          "location": {
+            "city": "Mumbai",
+            "tier": "tier1"
+          },
+          "targetAudience": {
+            "segment": "young_professionals",
+            "income": "high",
+            "category": "retail"
+          },
+          "scheduledTime": {
+            "start": "2026-05-15T20:00:00Z",
+            "end": "2026-05-15T22:00:00Z"
+          },
+          "budget": 50000,
+          "goalType": "footfall",
+          "campaignMode": "auction",
+          "performanceTier": "premium"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "finalPrice": 285.75,
+            "unit": "CPV",
+            "basePrice": 12,
+            "maxCap": 96,
+            "floorPrice": 3.6,
+            "qualityScore": 1.0,
+            "effectivePrice": 285.75,
+            "confidenceScore": 0.7,
+            "multipliers": {
+              "demand": 1.5,
+              "competition": 1.4,
+              "peakTime": 2.5,
+              "dayOfWeek": 1.3,
+              "seasonal": 1.0,
+              "location": 2.5,
+              "category": 1.2,
+              "weather": 1.0,
+              "event": 1.0,
+              "quality": 1.0,
+              "confidence": 1.0
+            },
+            "breakdown": [
+              { "component": "Base Price", "multiplier": 1.0, "contribution": 12 },
+              { "component": "Demand", "multiplier": 1.5, "contribution": 6 },
+              { "component": "Competition", "multiplier": 1.4, "contribution": 4.8 },
+              { "component": "Peak Time", "multiplier": 2.5, "contribution": 18 },
+              { "component": "Day of Week", "multiplier": 1.3, "contribution": 3.6 },
+              { "component": "Location", "multiplier": 2.5, "contribution": 18 },
+              { "component": "Category", "multiplier": 1.2, "contribution": 2.4 }
+            ],
+            "auctionDetails": {
+              "mode": "auction",
+              "competingAds": 23,
+              "yourRank": 5,
+              "winningBid": 278.50,
+              "reservePrice": 171.45
+            },
+            "performanceGuarantee": {
+              "tier": "premium",
+              "guarantee": "Conversion optimization",
+              "estimatedClicks": 350,
+              "estimatedConversions": 28,
+              "minimumConversions": 17
+            },
+            "recommendedBid": 328.61,
+            "estimatedResults": {
+              "reach": 17500,
+              "clicks": 175,
+              "conversions": 14,
+              "visits": 122,
+              "scans": 0
+            },
+            "validUntil": "2026-05-13T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Calculate WhatsApp Campaign Price",
+      "request": {
+        "method": "POST",
+        "path": "/v1/price",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "adType": "whatsapp",
+          "placement": "broadcast",
+          "location": {
+            "city": "Bangalore",
+            "tier": "tier1"
+          },
+          "targetAudience": {
+            "segment": "food_enthusiasts",
+            "income": "medium",
+            "category": "restaurant"
+          },
+          "budget": 15000,
+          "goalType": "conversions",
+          "campaignMode": "auction"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "finalPrice": 1.85,
+            "unit": "CPA",
+            "basePrice": 25,
+            "maxCap": 75,
+            "floorPrice": 7.5,
+            "qualityScore": 1.0,
+            "effectivePrice": 1.85,
+            "confidenceScore": 0.65,
+            "multipliers": {
+              "demand": 1.2,
+              "competition": 1.0,
+              "peakTime": 1.0,
+              "dayOfWeek": 1.0,
+              "seasonal": 1.0,
+              "location": 2.5,
+              "category": 1.0,
+              "weather": 1.0,
+              "event": 1.0,
+              "quality": 1.0,
+              "confidence": 1.0
+            },
+            "breakdown": [
+              { "component": "Base Price", "multiplier": 1.0, "contribution": 25 },
+              { "component": "Demand", "multiplier": 1.2, "contribution": 5 },
+              { "component": "Location", "multiplier": 2.5, "contribution": 37.5 }
+            ],
+            "recommendedBid": 2.13,
+            "estimatedResults": {
+              "reach": 8108,
+              "clicks": 162,
+              "conversions": 8,
+              "visits": 0,
+              "scans": 0
+            },
+            "validUntil": "2026-05-13T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "Liquidation Pricing",
+      "request": {
+        "method": "POST",
+        "path": "/v1/price/liquidation",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "originalPrice": 5000,
+          "hoursUntilSlot": 4,
+          "percentSold": 35
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "originalPrice": 5000,
+            "liquidationPrice": 3500,
+            "discountPercent": "30.0",
+            "reason": "Below target sell-through"
+          }
+        }
+      }
+    },
+    {
+      "title": "Budget Allocation",
+      "request": {
+        "method": "POST",
+        "path": "/v1/price/allocate",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "totalBudget": 50000,
+          "goal": "conversions",
+          "location": "Mumbai"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "allocations": [
+              {
+                "channel": "whatsapp",
+                "amount": 15000,
+                "percentage": 30,
+                "estimatedReach": 10000,
+                "estimatedClicks": 500,
+                "estimatedConversions": 75,
+                "cpm": 80
+              },
+              {
+                "channel": "search",
+                "amount": 12500,
+                "percentage": 25,
+                "estimatedReach": 25000,
+                "estimatedClicks": 625,
+                "estimatedConversions": 50,
+                "cpm": 250
+              },
+              {
+                "channel": "feed",
+                "amount": 10000,
+                "percentage": 20,
+                "estimatedReach": 20000,
+                "estimatedClicks": 400,
+                "estimatedConversions": 30,
+                "cpm": 100
+              },
+              {
+                "channel": "push",
+                "amount": 7500,
+                "percentage": 15,
+                "estimatedReach": 50000,
+                "estimatedClicks": 250,
+                "estimatedConversions": 15,
+                "cpm": 30
+              },
+              {
+                "channel": "email",
+                "amount": 5000,
+                "percentage": 10,
+                "estimatedReach": 10000,
+                "estimatedClicks": 100,
+                "estimatedConversions": 10,
+                "cpm": 20
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Validate Minimum Spend",
+      "request": {
+        "method": "POST",
+        "path": "/v1/price/validate",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "adType": "whatsapp",
+          "budget": 1500
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "valid": true,
+            "minimum": 1000,
+            "message": "Budget meets minimum requirements"
+          }
+        }
+      }
+    }
+  ]
+}

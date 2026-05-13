@@ -1,0 +1,103 @@
+{
+  "description": "Authentication API request/response examples",
+  "examples": [
+    {
+      "title": "Login Request",
+      "request": {
+        "method": "POST",
+        "path": "/v1/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "merchant@example.com",
+          "password": "yourpassword123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtb2JpbGUiOiJtb2JfdmFsdWUiLCJpYXQiOjE2NTI1MDAwMDAsImV4cCI6MTYyNTUwMzYwMH0.abc123xyz",
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtb2JpbGUiOiJtb2JfdmFsdWUiLCJpYXQiOjE2MjU1MDAwMDAsImV4cCI6MTY1NzA1MjAwMH0.xyz789abc",
+          "expiresIn": 3600,
+          "tokenType": "Bearer",
+          "merchant": {
+            "id": "merchant_abc123",
+            "name": "Example Restaurant",
+            "email": "merchant@example.com",
+            "businessType": "restaurant",
+            "tier": "standard"
+          }
+        }
+      }
+    },
+    {
+      "title": "Token Refresh",
+      "request": {
+        "method": "POST",
+        "path": "/v1/auth/refresh",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new",
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new_refresh",
+          "expiresIn": 3600,
+          "tokenType": "Bearer"
+        }
+      }
+    },
+    {
+      "title": "Token Verification",
+      "request": {
+        "method": "POST",
+        "path": "/v1/auth/verify",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "valid": true,
+          "merchantId": "merchant_abc123",
+          "expiresAt": "2026-05-13T11:30:00Z",
+          "issuedAt": "2026-05-13T10:30:00Z",
+          "scopes": [
+            "campaigns:read",
+            "campaigns:write",
+            "wallet:read",
+            "wallet:write"
+          ]
+        }
+      }
+    },
+    {
+      "title": "Invalid Credentials",
+      "request": {
+        "method": "POST",
+        "path": "/v1/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "wrong@example.com",
+          "password": "wrongpassword"
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "code": "INVALID_CREDENTIALS",
+          "message": "Invalid email or password"
+        }
+      }
+    }
+  ]
+}
