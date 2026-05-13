@@ -2,7 +2,8 @@ import { store, eventEmitter } from '../services/journeyService';
 import { Journey } from '../models/Journey';
 import { Step } from '../models/Step';
 import { JourneyEntry } from '../models/JourneyEntry';
-import { ActionType, WorkerEvent } from '../types';
+import { ActionType, WorkerEvent, AICheckConfig, AICheckContext } from '../types';
+import { aiCheckService } from '../services/aiCheckService';
 import { logger } from '../utils/logger';
 
 // Action executors
@@ -375,6 +376,9 @@ export class JourneyWorker {
         case 'split':
           await this.processSplitStep(entry, journey, step);
           break;
+        case 'ai_check':
+          await this.processAICheckStep(entry, journey, step);
+          break;
         case 'end':
           await this.completeJourney(entry, journey);
           break;
@@ -517,6 +521,110 @@ export class JourneyWorker {
 
     // No branch matched, continue to default next step
     await this.moveToNextStep(entry, journey, step);
+  }
+
+  /**
+   * Process an AI-Check step
+   */
+  private async processAICheckStep(entry: JourneyEntry, journey: Journey, step: Step): Promise<void> {
+    if (!step.aiCheckConfig) {
+      logger.warn('AI-Check step missing configuration', { stepId: step.id });
+      await this.moveToNextStep(entry, journey, step);
+      return;
+    }
+
+    logger.info('Processing AI check step', {
+      stepId: step.id,
+      checkType: step.aiCheckConfig.checkType,
+      threshold: step.aiCheckConfig.threshold,
+    });
+
+    try {
+      // Build context for AI evaluation
+      const context: AICheckContext = {
+        contactData: entry.contactData,
+        journeyData: {
+          journeyId: journey.id,
+          journeyName: journey.name,
+        },
+        entryData: {
+          entryId: entry.id,
+          enteredAt: entry.enteredAt.toISOString(),
+          currentStepId: entry.currentStepId,
+        },
+        historicalData: {
+          recentSearches: entry.contactData.recentSearches as string[] || [],
+          abandonedCarts: entry.contactData.abandonedCarts as Array<{ items: string[]; value: number }> || [],
+          views: entry.contactData.views as string[] || [],
+          purchases: entry.contactData.purchases as Array<{ items: string[]; total: number; date: Date }> || [],
+          supportTickets: entry.contactData.supportTickets as number || 0,
+          lastActivity: entry.contactData.lastActivity as Date || undefined,
+          engagementScore: entry.contactData.engagementScore as number || undefined,
+        },
+        metadata: {
+          journeyTags: journey.tags,
+          entryTags: entry.tags,
+        },
+      };
+
+      // Evaluate the AI check
+      const result = await aiCheckService.evaluateCheck(step.aiCheckConfig, context);
+
+      // Update step analytics
+      step.updateAIAnalytics(result);
+
+      // Log the result
+      logger.info('AI check completed', {
+        stepId: step.id,
+        checkType: result.checkType,
+        score: result.score,
+        passed: result.passed,
+        confidence: result.confidence,
+        evaluationTimeMs: result.evaluationTimeMs,
+      });
+
+      // Store variables from the result
+      if (result.variables && Object.keys(result.variables).length > 0) {
+        entry.variables = { ...entry.variables, ...result.variables };
+      }
+
+      // Determine next step based on result
+      const nextStepId = step.getNextStepForResult(result);
+
+      if (nextStepId) {
+        entry.moveToStep(nextStepId, {
+          aiCheckResult: {
+            checkType: result.checkType,
+            score: result.score,
+            passed: result.passed,
+            reasoning: result.reasoning,
+          },
+        });
+        store.saveEntry(entry);
+        await this.processCurrentStep(entry, journey);
+      } else {
+        // No specific next step, use default nextStepId
+        await this.moveToNextStep(entry, journey, step);
+      }
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('AI check failed', {
+        stepId: step.id,
+        error: errorMessage,
+      });
+
+      // On AI check failure, use default fallback
+      if (step.nextStepId) {
+        entry.moveToStep(step.nextStepId, {
+          aiCheckError: errorMessage,
+        });
+        store.saveEntry(entry);
+        await this.processCurrentStep(entry, journey);
+      } else {
+        await this.moveToNextStep(entry, journey, step);
+      }
+    }
   }
 
   private evaluateCondition(condition: { field: string; operator: string; value: unknown }, data: Record<string, unknown>): boolean {

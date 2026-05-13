@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { journeyService } from '../services/journeyService';
+import { journeyService, store } from '../services/journeyService';
 import { journeyWorker } from '../workers/journeyWorker';
+import { aiCheckService } from '../services/aiCheckService';
 import { Journey } from '../models/Journey';
 import { Step } from '../models/Step';
-import { ActionType, TriggerType, ABVariant } from '../types';
+import { ActionType, TriggerType, ABVariant, AICheckConfig, AICheckContext, BUILT_IN_CHECKS } from '../types';
 
 const router = Router();
 
@@ -711,6 +712,296 @@ router.post('/journeys/:journeyId/steps/:stepId/position', async (req: Request, 
     } else {
       res.status(400).json(result);
     }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+});
+
+// ==================== AI-Check Nodes ====================
+
+/**
+ * GET /api/journeys/:journeyId/steps/:stepId/ai-check
+ * Get AI check configuration for a step
+ */
+router.get('/journeys/:journeyId/steps/:stepId/ai-check', async (req: Request, res: Response) => {
+  try {
+    const { journeyId, stepId } = req.params;
+
+    const journey = store.getJourney(journeyId);
+    if (!journey) {
+      return res.status(404).json({ success: false, error: 'Journey not found' });
+    }
+
+    const step = journey.getStep(stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, error: 'Step not found' });
+    }
+
+    if (step.type !== 'ai_check') {
+      return res.status(400).json({ success: false, error: 'Step is not an AI check type' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        config: step.aiCheckConfig,
+        analytics: step.aiCheckAnalytics,
+        lastResult: step.lastAiCheckResult,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+
+/**
+ * POST /api/journeys/:id/steps/ai-check
+ * Add AI check node to journey
+ */
+router.post('/journeys/:id/steps/ai-check', async (req: Request, res: Response) => {
+  try {
+    const { name, description, checkType, model, prompt, threshold, trueLabel, falseLabel, trueNextStepId, falseNextStepId, outputVariable, position } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Step name is required' });
+    }
+
+    if (!checkType) {
+      return res.status(400).json({ success: false, error: 'Check type is required' });
+    }
+
+    const validCheckTypes = ['lead_score', 'purchase_probability', 'churn_risk', 'upsell_eligibility', 'channel_preference', 'custom'];
+    if (!validCheckTypes.includes(checkType)) {
+      return res.status(400).json({ success: false, error: `Invalid check type. Must be one of: ${validCheckTypes.join(', ')}` });
+    }
+
+    const builtInCheck = BUILT_IN_CHECKS.find(c => c.checkType === checkType);
+    const defaultThreshold = builtInCheck?.defaultThreshold || 0.5;
+
+    const aiCheckConfig: AICheckConfig = {
+      type: 'ai_check',
+      checkType,
+      model: model || 'claude',
+      prompt: checkType === 'custom' ? prompt : undefined,
+      threshold: threshold !== undefined ? threshold : defaultThreshold,
+      trueLabel: trueLabel || 'pass',
+      falseLabel: falseLabel || 'fail',
+      trueNextStepId,
+      falseNextStepId,
+      outputVariable,
+    };
+
+    const result = await journeyService.addStep(req.params.id, {
+      name,
+      description: description || `AI Check: ${checkType}`,
+      type: 'ai_check',
+      actionType: null,
+      actionConfig: null,
+      position: position || { x: 0, y: 0 },
+      conditions: undefined,
+      splitBranches: undefined,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    const journey = store.getJourney(req.params.id);
+    if (journey) {
+      const step = journey.getStep(result.data?.id);
+      if (step) {
+        step.setAICheckConfig(aiCheckConfig);
+        store.saveJourney(journey);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { ...result.data, aiCheckConfig },
+      message: 'AI check step added successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+
+/**
+ * PUT /api/journeys/:journeyId/steps/:stepId/ai-check
+ * Update AI check configuration
+ */
+router.put('/journeys/:journeyId/steps/:stepId/ai-check', async (req: Request, res: Response) => {
+  try {
+    const { checkType, model, prompt, threshold, trueLabel, falseLabel, trueNextStepId, falseNextStepId, outputVariable } = req.body;
+
+    const journey = store.getJourney(req.params.journeyId);
+    if (!journey) {
+      return res.status(404).json({ success: false, error: 'Journey not found' });
+    }
+
+    const step = journey.getStep(req.params.stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, error: 'Step not found' });
+    }
+
+    if (step.type !== 'ai_check' || !step.aiCheckConfig) {
+      return res.status(400).json({ success: false, error: 'Step is not an AI check type' });
+    }
+
+    const updatedConfig: AICheckConfig = {
+      ...step.aiCheckConfig,
+      checkType: checkType || step.aiCheckConfig.checkType,
+      model: model || step.aiCheckConfig.model,
+      prompt: prompt !== undefined ? prompt : step.aiCheckConfig.prompt,
+      threshold: threshold !== undefined ? threshold : step.aiCheckConfig.threshold,
+      trueLabel: trueLabel || step.aiCheckConfig.trueLabel,
+      falseLabel: falseLabel || step.aiCheckConfig.falseLabel,
+      trueNextStepId: trueNextStepId !== undefined ? trueNextStepId : step.aiCheckConfig.trueNextStepId,
+      falseNextStepId: falseNextStepId !== undefined ? falseNextStepId : step.aiCheckConfig.falseNextStepId,
+      outputVariable: outputVariable !== undefined ? outputVariable : step.aiCheckConfig.outputVariable,
+    };
+
+    step.setAICheckConfig(updatedConfig);
+    store.saveJourney(journey);
+
+    res.json({
+      success: true,
+      data: { config: step.aiCheckConfig, analytics: step.aiCheckAnalytics },
+      message: 'AI check configuration updated'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+
+/**
+ * POST /api/journeys/:journeyId/steps/:stepId/test
+ * Test AI check with sample data
+ */
+router.post('/journeys/:journeyId/steps/:stepId/test', async (req: Request, res: Response) => {
+  try {
+    const { testData } = req.body;
+
+    const journey = store.getJourney(req.params.journeyId);
+    if (!journey) {
+      return res.status(404).json({ success: false, error: 'Journey not found' });
+    }
+
+    const step = journey.getStep(req.params.stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, error: 'Step not found' });
+    }
+
+    if (!step.aiCheckConfig) {
+      return res.status(400).json({ success: false, error: 'Step has no AI check configuration' });
+    }
+
+    const context: AICheckContext = {
+      contactData: testData?.contactData || {
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        id: 'test-user-id',
+      },
+      journeyData: { journeyId: journey.id, journeyName: journey.name },
+      entryData: { entryId: 'test-entry-id', enteredAt: new Date().toISOString() },
+      historicalData: testData?.historicalData || {
+        recentSearches: ['product 1', 'product 2'],
+        views: ['category/electronics', 'product/smartphone'],
+        engagementScore: 75,
+      },
+    };
+
+    const testResult = await aiCheckService.testCheck(step.aiCheckConfig, context);
+
+    res.json({ success: true, data: testResult });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+
+/**
+ * GET /api/journeys/:journeyId/steps/:stepId/result
+ * Get last AI check result
+ */
+router.get('/journeys/:journeyId/steps/:stepId/result', async (req: Request, res: Response) => {
+  try {
+    const journey = store.getJourney(req.params.journeyId);
+    if (!journey) {
+      return res.status(404).json({ success: false, error: 'Journey not found' });
+    }
+
+    const step = journey.getStep(req.params.stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, error: 'Step not found' });
+    }
+
+    if (!step.aiCheckConfig) {
+      return res.status(400).json({ success: false, error: 'Step has no AI check configuration' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        lastResult: step.lastAiCheckResult,
+        analytics: step.aiCheckAnalytics,
+        config: step.aiCheckConfig,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+});
+
+/**
+ * GET /api/ai-checks/available
+ * Get available AI check types
+ */
+router.get('/ai-checks/available', async (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: BUILT_IN_CHECKS.map(check => ({
+      type: check.checkType,
+      name: check.name,
+      description: check.description,
+      defaultThreshold: check.defaultThreshold,
+      variableMapping: check.variableMapping,
+    })),
+  });
+});
+
+/**
+ * POST /api/ai-checks/clear-cache
+ * Clear AI check cache
+ */
+router.post('/ai-checks/clear-cache', async (_req: Request, res: Response) => {
+  try {
+    const stats = aiCheckService.getCacheStats();
+    aiCheckService.clearCache();
+
+    res.json({
+      success: true,
+      message: 'AI check cache cleared',
+      previousStats: stats,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

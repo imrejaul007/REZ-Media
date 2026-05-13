@@ -3,10 +3,15 @@ import {
   ActionType,
   StepStatus,
   ActionConfig,
-  StepAnalytics
+  StepAnalytics,
+  AICheckType,
+  AIModel,
+  AICheckConfig,
+  AICheckResult,
+  AICheckAnalytics
 } from '../types';
 
-export type StepType = 'entry' | 'action' | 'condition' | 'split' | 'end';
+export type StepType = 'entry' | 'action' | 'condition' | 'split' | 'end' | 'ai_check';
 
 export class Step {
   public readonly id: string;
@@ -44,6 +49,11 @@ export class Step {
     };
   }[];
 
+  // AI-Check specific fields
+  public aiCheckConfig?: AICheckConfig;
+  public aiCheckAnalytics?: AICheckAnalytics;
+  public lastAiCheckResult?: AICheckResult;
+
   constructor(data?: Partial<Step>) {
     this.id = data?.id || uuidv4();
     this.name = data?.name || 'New Step';
@@ -64,6 +74,21 @@ export class Step {
     this.analytics = data?.analytics || this.initAnalytics();
     this.conditions = data?.conditions;
     this.splitBranches = data?.splitBranches;
+    this.aiCheckConfig = data?.aiCheckConfig;
+    this.aiCheckAnalytics = data?.aiCheckAnalytics || this.initAIAnalytics();
+    this.lastAiCheckResult = data?.lastAiCheckResult;
+  }
+
+  private initAIAnalytics(): AICheckAnalytics {
+    return {
+      stepId: this.id,
+      totalEvaluations: 0,
+      passCount: 0,
+      failCount: 0,
+      passRate: 0,
+      avgScore: 0,
+      avgEvaluationTimeMs: 0,
+    };
   }
 
   private initAnalytics(): StepAnalytics {
@@ -99,11 +124,18 @@ export class Step {
         lastUpdated: this.analytics.lastUpdated.toISOString()
       },
       conditions: this.conditions,
-      splitBranches: this.splitBranches
+      splitBranches: this.splitBranches,
+      aiCheckConfig: this.aiCheckConfig,
+      aiCheckAnalytics: this.aiCheckAnalytics,
+      lastAiCheckResult: this.lastAiCheckResult ? {
+        ...this.lastAiCheckResult,
+        evaluatedAt: this.lastAiCheckResult.evaluatedAt.toISOString()
+      } : undefined
     };
   }
 
   public static fromJSON(json: Record<string, unknown>): Step {
+    const aiCheckResult = json.lastAiCheckResult as Record<string, unknown> | undefined;
     return new Step({
       id: json.id as string,
       name: json.name as string,
@@ -122,7 +154,13 @@ export class Step {
         lastUpdated: new Date((json.analytics as StepAnalytics).lastUpdated)
       } : undefined,
       conditions: json.conditions as Step['conditions'],
-      splitBranches: json.splitBranches as Step['splitBranches']
+      splitBranches: json.splitBranches as Step['splitBranches'],
+      aiCheckConfig: json.aiCheckConfig as AICheckConfig | undefined,
+      aiCheckAnalytics: json.aiCheckAnalytics as AICheckAnalytics | undefined,
+      lastAiCheckResult: aiCheckResult ? {
+        ...aiCheckResult,
+        evaluatedAt: new Date(aiCheckResult.evaluatedAt as string)
+      } as AICheckResult : undefined
     });
   }
 
@@ -208,6 +246,76 @@ export class Step {
     this.analytics = this.initAnalytics();
   }
 
+  // ==================== AI-Check Methods ====================
+
+  /**
+   * Set AI check configuration
+   */
+  public setAICheckConfig(config: AICheckConfig): void {
+    this.type = 'ai_check';
+    this.aiCheckConfig = config;
+  }
+
+  /**
+   * Update AI check analytics after evaluation
+   */
+  public updateAIAnalytics(result: AICheckResult): void {
+    if (!this.aiCheckAnalytics) {
+      this.aiCheckAnalytics = this.initAIAnalytics();
+    }
+
+    const total = this.aiCheckAnalytics.totalEvaluations;
+    const passed = result.passed ? 1 : 0;
+
+    this.aiCheckAnalytics.totalEvaluations++;
+    this.aiCheckAnalytics.passCount += passed;
+    this.aiCheckAnalytics.failCount += 1 - passed;
+    this.aiCheckAnalytics.passRate =
+      (this.aiCheckAnalytics.passCount / this.aiCheckAnalytics.totalEvaluations) * 100;
+    this.aiCheckAnalytics.avgScore =
+      (this.aiCheckAnalytics.avgScore * total + result.score) /
+      this.aiCheckAnalytics.totalEvaluations;
+    this.aiCheckAnalytics.avgEvaluationTimeMs =
+      (this.aiCheckAnalytics.avgEvaluationTimeMs * total + result.evaluationTimeMs) /
+      this.aiCheckAnalytics.totalEvaluations;
+    this.aiCheckAnalytics.lastEvaluated = new Date();
+
+    this.lastAiCheckResult = result;
+    this.analytics.lastUpdated = new Date();
+  }
+
+  /**
+   * Get the next step based on AI check result
+   */
+  public getNextStepForResult(result: AICheckResult): string {
+    if (!this.aiCheckConfig) {
+      return this.nextStepId;
+    }
+
+    const passed = result.score >= this.aiCheckConfig.threshold;
+
+    if (passed && this.aiCheckConfig.trueNextStepId) {
+      return this.aiCheckConfig.trueNextStepId;
+    }
+
+    if (!passed && this.aiCheckConfig.falseNextStepId) {
+      return this.aiCheckConfig.falseNextStepId;
+    }
+
+    // Fallback to configured labels
+    const label = passed ? this.aiCheckConfig.trueLabel : this.aiCheckConfig.falseLabel;
+    // In practice, this would resolve via step connections
+    return this.nextStepId;
+  }
+
+  /**
+   * Reset AI check analytics
+   */
+  public resetAIAnalytics(): void {
+    this.aiCheckAnalytics = this.initAIAnalytics();
+    this.lastAiCheckResult = undefined;
+  }
+
   public validate(): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
@@ -242,6 +350,29 @@ export class Step {
 
     if (this.timeout < 0) {
       errors.push('Timeout cannot be negative');
+    }
+
+    // AI-Check validation
+    if (this.type === 'ai_check') {
+      if (!this.aiCheckConfig) {
+        errors.push('AI-Check step must have AI check configuration');
+      } else {
+        if (!this.aiCheckConfig.checkType) {
+          errors.push('AI check type is required');
+        }
+        if (this.aiCheckConfig.checkType === 'custom' && !this.aiCheckConfig.prompt) {
+          errors.push('Custom AI check requires a prompt');
+        }
+        if (this.aiCheckConfig.threshold < 0 || this.aiCheckConfig.threshold > 100) {
+          errors.push('AI check threshold must be between 0 and 100');
+        }
+        if (!this.aiCheckConfig.trueLabel) {
+          errors.push('AI check true label is required');
+        }
+        if (!this.aiCheckConfig.falseLabel) {
+          errors.push('AI check false label is required');
+        }
+      }
     }
 
     return {
