@@ -1,10 +1,9 @@
-// @ts-nocheck
 import 'express-async-errors';
 import dotenv from 'dotenv';
 dotenv.config();
 
 import * as Sentry from '@sentry/node';
-import { expressIntegration, setupExpressErrorHandler } from '@sentry/node';
+import { expressIntegration } from '@sentry/node';
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   integrations: [expressIntegration()],
@@ -23,7 +22,7 @@ client.collectDefaultMetrics({ register });
 
 import { connectDB } from './config/database';
 import { getRedis, closeRedis } from './config/redis';
-import { logger, createServiceLogger } from './config/logger';
+import { logger } from './config/logger';
 import { serverConfig, validateConfig } from './config';
 
 import shopifyRoutes from './routes';
