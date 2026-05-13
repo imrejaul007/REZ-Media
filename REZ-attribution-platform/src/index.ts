@@ -6,29 +6,58 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { trackRoutes, reportsRoutes } from './routes';
 import logger from './utils/logger';
+import { authMiddleware, rateLimitMiddleware, requestIdMiddleware, errorHandler } from './middleware/auth';
 
 // Load environment variables
 dotenv.config();
+
+// Load service tokens
+function getServiceTokens(): Record<string, string> {
+  const tokensJson = process.env.INTERNAL_SERVICE_TOKENS_JSON;
+  if (!tokensJson) return {};
+  try {
+    return JSON.parse(tokensJson);
+  } catch {
+    console.error('[AUTH] Failed to parse INTERNAL_SERVICE_TOKENS_JSON');
+    return {};
+  }
+}
+
+const SERVICE_TOKENS = getServiceTokens();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rez-attribution';
 
+// Get allowed CORS origins
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['https://rezapp.com', 'https://www.rezapp.com'];
+
 // Middleware
+app.use(requestIdMiddleware);
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Token', 'X-Request-Id'],
+  maxAge: 86400,
 }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Global rate limiting
+app.use(rateLimitMiddleware);
+
 // Request logging middleware
-app.use((req: Request, _res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const requestId = (req as any).requestId;
   logger.info(`${req.method} ${req.path}`, {
     query: req.query,
-    ip: req.ip
+    ip: req.ip,
+    requestId,
   });
   next();
 });
@@ -39,10 +68,27 @@ app.get('/health', (_req: Request, res: Response) => {
     uptime: process.uptime(),
     message: 'OK',
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
   };
   res.json(healthcheck);
 });
+
+// Ready check
+app.get('/ready', (_req: Request, res: Response) => {
+  const checks = {
+    database: mongoose.connection.readyState === 1,
+    service: true,
+  };
+
+  const allHealthy = Object.values(checks).every(v => v === true);
+  res.status(allHealthy ? 200 : 503).json({
+    status: allHealthy ? 'ready' : 'degraded',
+    checks,
+  });
+});
+
+// Apply authentication to API routes
+app.use('/api', authMiddleware);
 
 // API Routes
 app.use('/api/track', trackRoutes);
@@ -52,7 +98,7 @@ app.use('/api/reports', reportsRoutes);
 app.post('/api/campaigns/:id/attribution', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: campaignId } = req.params;
-    const { reportGenerator } = await import('./services/ReportGenerator');
+    const { ReportGenerator } = await import('./services/ReportGenerator');
     const { AttributionModel } = await import('./models/AttributionReport');
 
     const {
@@ -61,97 +107,66 @@ app.post('/api/campaigns/:id/attribution', async (req: Request, res: Response, n
       attributionModel
     } = req.body;
 
-    const report = await reportGenerator.generateCampaignAttribution(campaignId, {
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      attributionModel: attributionModel || AttributionModel.LINEAR
+    const reportGenerator = new ReportGenerator();
+    const report = await reportGenerator.generateAttributionReport({
+      campaignId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      attributionModel: attributionModel || 'LAST_CLICK',
     });
 
     res.json({
       success: true,
-      data: report
+      report,
     });
   } catch (error) {
     next(error);
   }
 });
 
-// Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  logger.error('Unhandled error', {
-    error: err.message,
-    stack: err.stack
-  });
-
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+// Error handler
+app.use(errorHandler);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    error: 'Not found'
+    error: 'Not found',
   });
 });
 
 // Database connection
-async function connectDatabase(): Promise<void> {
+async function connectDatabase() {
   try {
-    await mongoose.connect(MONGODB_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000
-    });
-    logger.info('Connected to MongoDB', { uri: MONGODB_URI.replace(/\/\/.*@/, '//<credentials>@') });
+    await mongoose.connect(MONGODB_URI);
+    logger.info('Connected to MongoDB');
   } catch (error) {
-    logger.error('Failed to connect to MongoDB', { error });
+    logger.error('Failed to connect to MongoDB:', error);
     process.exit(1);
   }
 }
 
 // Graceful shutdown
-async function shutdown(signal: string): Promise<void> {
-  logger.info(`Received ${signal}. Shutting down gracefully...`);
-
-  try {
-    await mongoose.connection.close();
-    logger.info('MongoDB connection closed');
-    process.exit(0);
-  } catch (error) {
-    logger.error('Error during shutdown', { error });
-    process.exit(1);
-  }
+async function shutdown() {
+  logger.info('Shutting down...');
+  await mongoose.disconnect();
+  process.exit(0);
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // Start server
-async function startServer(): Promise<void> {
+async function start() {
   await connectDatabase();
 
   app.listen(PORT, () => {
-    logger.info(`REZ Attribution Platform running on port ${PORT}`, {
-      nodeEnv: process.env.NODE_ENV,
-      mongodbUri: MONGODB_URI.replace(/\/\/.*@/, '//<credentials>@')
-    });
-    logger.info('Available endpoints:', {
-      'POST /api/track/touchpoint': 'Track a touchpoint',
-      'POST /api/track/conversion': 'Track a conversion',
-      'GET /api/reports/attribution': 'Get attribution report',
-      'GET /api/reports/funnel': 'Get conversion funnel',
-      'POST /api/campaigns/:id/attribution': 'Get campaign attribution'
-    });
+    logger.info(`Attribution Platform running on port ${PORT}`);
+    logger.info(`Health: http://localhost:${PORT}/health`);
+    logger.info(`API: http://localhost:${PORT}/api`);
   });
 }
 
-startServer().catch(error => {
-  logger.error('Failed to start server', { error });
-  process.exit(1);
-});
+start();
 
 export default app;

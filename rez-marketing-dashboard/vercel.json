@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["singapore"],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@api-url",
+    "NEXT_PUBLIC_ADS_SERVICE_URL": "@ads-service-url",
+    "NEXT_PUBLIC_AI_CAMPAIGN_BUILDER_URL": "@ai-campaign-url"
+  }
+}

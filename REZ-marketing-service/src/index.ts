@@ -14,6 +14,7 @@ import compression from 'compression';
 import mongoose from 'mongoose';
 import { connectRedis, redis } from './config/redis';
 import { logger } from './config/logger';
+import { authMiddleware, rateLimitMiddleware, requestIdMiddleware, errorHandler, ALLOWED_ORIGINS } from './middleware/auth';
 
 process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'rez-marketing-service';
 
@@ -21,13 +22,20 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '4026', 10);
 
 // Middleware
+app.use(requestIdMiddleware);
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+  origin: ALLOWED_ORIGINS,
   credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Token', 'X-Request-Id'],
+  maxAge: 86400,
 }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
+
+// Global rate limiting
+app.use(rateLimitMiddleware);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -42,7 +50,7 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.get('/ready', async (req, res) => {
+app.get('/ready', async (_req, res) => {
   try {
     await redis.ping();
     res.json({ ready: true });
@@ -56,16 +64,16 @@ import campaignRoutes from './routes/campaign.routes';
 import segmentRoutes from './routes/segment.routes';
 import analyticsRoutes from './routes/analytics.routes';
 
+// Apply authentication to API routes
+app.use('/api', authMiddleware);
+
 // Routes
 app.use('/api/v1/campaigns', campaignRoutes);
 app.use('/api/v1/segments', segmentRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 
 // Error handler
-app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error('Marketing service error', { error: err.message, stack: err.stack });
-  res.status(500).json({ error: 'Internal server error' });
-});
+app.use(errorHandler);
 
 async function start(): Promise<void> {
   try {

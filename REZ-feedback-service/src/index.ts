@@ -5,6 +5,7 @@ import compression from 'compression';
 import mongoose from 'mongoose';
 
 import { initSentry } from './config/sentry';
+import { authMiddleware, rateLimitMiddleware, requestIdMiddleware, errorHandler, ALLOWED_ORIGINS } from './middleware/auth';
 import feedbackRoutes from './routes/feedback';
 import dashboardRoutes from './dashboard';
 import { checkHealth, isAlive, isReady } from './health';
@@ -20,11 +21,21 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rez-fe
 const app: Express = express();
 
 // Middleware
+app.use(requestIdMiddleware);
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Token', 'X-Request-Id'],
+  maxAge: 86400,
+}));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Global rate limiting
+app.use(rateLimitMiddleware);
 
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -59,9 +70,12 @@ app.get('/health/ready', async (_req: Request, res: Response) => {
   }
 });
 
-// API routes
-app.use('/feedback', feedbackRoutes);
-app.use('/dashboard', dashboardRoutes);
+// Apply authentication to API routes
+app.use('/feedback', authMiddleware, feedbackRoutes);
+app.use('/dashboard', authMiddleware, dashboardRoutes);
+
+// Error handler
+app.use(errorHandler);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
