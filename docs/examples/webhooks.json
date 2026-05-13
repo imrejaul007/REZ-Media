@@ -1,0 +1,259 @@
+{
+  "description": "Webhook event payload examples",
+  "examples": [
+    {
+      "title": "campaign.created",
+      "event": {
+        "id": "evt_001",
+        "event": "campaign.created",
+        "timestamp": "2026-05-13T10:30:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_new123",
+        "data": {
+          "campaign": {
+            "id": "camp_new123",
+            "name": "New Campaign",
+            "adType": "whatsapp",
+            "budget": 10000.00,
+            "status": "draft"
+          }
+        }
+      }
+    },
+    {
+      "title": "campaign.status_changed",
+      "event": {
+        "id": "evt_002",
+        "event": "campaign.status_changed",
+        "timestamp": "2026-05-13T11:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_abc123",
+        "data": {
+          "campaign": {
+            "id": "camp_abc123",
+            "name": "Summer Sale 2026",
+            "status": "paused",
+            "previousStatus": "active"
+          },
+          "changes": {
+            "status": {
+              "from": "active",
+              "to": "paused"
+            }
+          }
+        }
+      }
+    },
+    {
+      "title": "campaign.completed",
+      "event": {
+        "id": "evt_003",
+        "event": "campaign.completed",
+        "timestamp": "2026-05-13T23:59:59Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_abc123",
+        "data": {
+          "campaign": {
+            "id": "camp_abc123",
+            "name": "Summer Sale 2026",
+            "status": "completed",
+            "previousStatus": "active",
+            "budget": 25000.00,
+            "spent": 25000.00
+          },
+          "summary": {
+            "impressions": 250000,
+            "clicks": 7500,
+            "conversions": 300,
+            "ctr": 3.0,
+            "cpa": 83.33
+          }
+        }
+      }
+    },
+    {
+      "title": "campaign.cancelled",
+      "event": {
+        "id": "evt_004",
+        "event": "campaign.cancelled",
+        "timestamp": "2026-05-13T14:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_xyz123",
+        "data": {
+          "campaign": {
+            "id": "camp_xyz123",
+            "name": "Test Campaign",
+            "status": "cancelled",
+            "previousStatus": "active",
+            "budget": 5000.00,
+            "spent": 1500.00
+          },
+          "refund": {
+            "amount": 3500.00
+          }
+        }
+      }
+    },
+    {
+      "title": "wallet.deposited",
+      "event": {
+        "id": "evt_005",
+        "event": "wallet.deposited",
+        "timestamp": "2026-05-13T10:30:00Z",
+        "merchantId": "merchant_xyz789",
+        "data": {
+          "transaction": {
+            "id": "txn_def456",
+            "amount": 50000.00,
+            "method": "upi",
+            "reference": "order_abc123"
+          },
+          "wallet": {
+            "balance": 100000.00,
+            "available": 85000.00,
+            "reserved": 15000.00
+          }
+        }
+      }
+    },
+    {
+      "title": "wallet.reserved",
+      "event": {
+        "id": "evt_006",
+        "event": "wallet.reserved",
+        "timestamp": "2026-05-13T09:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_abc123",
+        "data": {
+          "transaction": {
+            "id": "txn_ghi789",
+            "amount": 10000.00
+          },
+          "campaign": {
+            "id": "camp_abc123",
+            "name": "Summer Sale 2026"
+          },
+          "wallet": {
+            "reserved": 10000.00,
+            "available": 40000.00
+          },
+          "reservation": {
+            "id": "res_abc456",
+            "expiresAt": "2026-05-20T09:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "title": "wallet.deducted",
+      "event": {
+        "id": "evt_007",
+        "event": "wallet.deducted",
+        "timestamp": "2026-05-13T12:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_abc123",
+        "data": {
+          "transaction": {
+            "id": "txn_jkl012",
+            "amount": 50.00,
+            "reason": "impression_charge",
+            "eventId": "evt_unique123"
+          },
+          "wallet": {
+            "reserved": 9950.00,
+            "available": 40000.00
+          }
+        }
+      }
+    },
+    {
+      "title": "wallet.released",
+      "event": {
+        "id": "evt_008",
+        "event": "wallet.released",
+        "timestamp": "2026-05-13T16:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_xyz123",
+        "data": {
+          "transaction": {
+            "id": "txn_mno345",
+            "amount": 7500.00
+          },
+          "reservation": {
+            "id": "res_xyz789",
+            "originalAmount": 10000.00,
+            "releasedAmount": 7500.00
+          },
+          "wallet": {
+            "reserved": 2500.00,
+            "available": 47500.00
+          }
+        }
+      }
+    },
+    {
+      "title": "payment.completed",
+      "event": {
+        "id": "evt_009",
+        "event": "payment.completed",
+        "timestamp": "2026-05-13T13:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "data": {
+          "payment": {
+            "id": "pay_abc456",
+            "amount": 50000.00,
+            "method": "upi",
+            "reference": "order_xyz123"
+          },
+          "wallet": {
+            "balance": 90000.00,
+            "available": 40000.00
+          }
+        }
+      }
+    },
+    {
+      "title": "payment.failed",
+      "event": {
+        "id": "evt_010",
+        "event": "payment.failed",
+        "timestamp": "2026-05-13T13:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "data": {
+          "payment": {
+            "id": "pay_failed123",
+            "amount": 50000.00,
+            "method": "card",
+            "reference": "order_abc789"
+          },
+          "error": {
+            "code": "PAYMENT_DECLINED",
+            "message": "Card declined by issuer"
+          }
+        }
+      }
+    },
+    {
+      "title": "conversion.created",
+      "event": {
+        "id": "evt_011",
+        "event": "conversion.created",
+        "timestamp": "2026-05-13T15:00:00Z",
+        "merchantId": "merchant_xyz789",
+        "campaignId": "camp_abc123",
+        "data": {
+          "conversion": {
+            "id": "conv_abc123",
+            "type": "purchase",
+            "value": 500.00,
+            "currency": "INR"
+          },
+          "attribution": {
+            "channel": "whatsapp",
+            "touchpoint": "message_click"
+          }
+        }
+      }
+    }
+  ]
+}
