@@ -1,6 +1,6 @@
 /**
  * AI Campaign Generator Service
- * Generates campaigns from natural language goals
+ * Uses OpenAI GPT-4 for campaign generation with simulated fallback
  */
 
 import { v4 as uuid } from 'uuid';
@@ -14,6 +14,30 @@ import type {
   Estimation,
   ChannelConfig
 } from '../types';
+
+// OpenAI integration
+let openai: any = null;
+
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  if (!openai) {
+    // Dynamic import to avoid errors when package not installed
+    try {
+      const { OpenAI } = require('openai');
+      openai = new OpenAI({ apiKey });
+    } catch (e) {
+      console.warn('OpenAI package not installed. Run: npm install openai');
+      return null;
+    }
+  }
+  return openai;
+}
+
+function isOpenAIEnabled(): boolean {
+  return !!process.env.OPENAI_API_KEY;
+}
 
 export class AICampaignGenerator {
 
@@ -30,14 +54,14 @@ export class AICampaignGenerator {
     } = {}
   ): Promise<GeneratedCampaign> {
 
-    // Parse the goal
-    const parsedGoal = this.parseGoal(goal, options);
+    // Parse the goal using AI or fallback
+    const parsedGoal = await this.parseGoal(goal, options);
 
-    // Generate campaign name
-    const name = this.generateCampaignName(parsedGoal);
+    // Generate campaign name using AI or fallback
+    const name = await this.generateCampaignName(parsedGoal);
 
-    // Select channels
-    const channels = this.selectChannels(parsedGoal, options.preferChannels);
+    // Select channels using AI or fallback
+    const channels = await this.selectChannels(parsedGoal, options.preferChannels);
 
     // Allocate budget
     const budget = this.allocateBudget(parsedGoal.budget || 10000, channels);
@@ -45,11 +69,14 @@ export class AICampaignGenerator {
     // Build targeting
     const targeting = this.buildTargeting(parsedGoal);
 
-    // Generate creative
-    const creative = await this.generateCreative(goal, options.merchantType || 'retail');
+    // Generate creative using AI or fallback
+    const creative = await this.generateCreative(goal, parsedGoal.merchantType);
 
     // Estimate results
     const estimated = this.estimateResults(parsedGoal.budget || 10000, channels);
+
+    // Generate reasoning using AI or fallback
+    const aiReasoning = await this.generateReasoning(parsedGoal, channels);
 
     return {
       id: uuid(),
@@ -61,27 +88,63 @@ export class AICampaignGenerator {
       channels,
       creative,
       estimated,
-      aiReasoning: this.generateReasoning(parsedGoal, channels),
+      aiReasoning,
       createdAt: new Date(),
     };
   }
 
   /**
-   * Parse goal text into structured data
+   * Parse goal text into structured data using OpenAI
    */
-  private parseGoal(goal: string, options: any): CampaignGoal {
+  private async parseGoal(goal: string, options: any): Promise<CampaignGoal> {
+    const client = getOpenAIClient();
+
+    if (client && isOpenAIEnabled()) {
+      try {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a campaign analyst. Parse the merchant's goal into structured data.
+Return JSON with exactly these fields:
+- merchantType: "restaurant" | "hotel" | "fitness" | "retail" | "general"
+- location: city name or "All India"
+- budget: number in INR (10000-100000)
+- inferredIntent: brief description of what they want to achieve
+
+Examples:
+"Get more lunch customers" -> {"merchantType": "restaurant", "location": "All India", "budget": 15000, "inferredIntent": "increase lunch-time traffic"}
+"Promote my boutique in Pune" -> {"merchantType": "retail", "location": "Pune", "budget": 20000, "inferredIntent": "promote retail store"}`
+            },
+            {
+              role: 'user',
+              content: goal
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+        });
+
+        const parsed = JSON.parse(response.choices[0].message.content);
+        return {
+          text: goal,
+          merchantType: parsed.merchantType || options.merchantType || this.detectMerchantType(goal.toLowerCase()),
+          location: parsed.location || options.location || this.detectLocation(goal.toLowerCase()) || 'All India',
+          budget: parsed.budget || options.budget || this.suggestBudget(goal.toLowerCase()),
+        };
+      } catch (error) {
+        console.error('OpenAI parseGoal error, using fallback:', error);
+      }
+    }
+
+    // Fallback to rule-based parsing
     const lowerGoal = goal.toLowerCase();
-
-    // Detect intent
-    let merchantType = options.merchantType || this.detectMerchantType(lowerGoal);
-    let location = options.location || this.detectLocation(lowerGoal) || 'All India';
-    let budget = options.budget || this.suggestBudget(lowerGoal);
-
     return {
       text: goal,
-      merchantType,
-      location,
-      budget,
+      merchantType: options.merchantType || this.detectMerchantType(lowerGoal),
+      location: options.location || this.detectLocation(lowerGoal) || 'All India',
+      budget: options.budget || this.suggestBudget(lowerGoal),
     };
   }
 
@@ -119,23 +182,60 @@ export class AICampaignGenerator {
    * Suggest budget based on goal
    */
   private suggestBudget(goal: string): number {
-    const lowerGoal = goal.toLowerCase();
-    if (lowerGoal.includes('more customers') || lowerGoal.includes('increase sales')) {
+    if (goal.includes('more customers') || goal.includes('increase sales')) {
       return 25000;
     }
-    if (lowerGoal.includes('lunch') || lowerGoal.includes('breakfast')) {
+    if (goal.includes('lunch') || goal.includes('breakfast')) {
       return 10000;
     }
-    if (lowerGoal.includes('weekend')) {
+    if (goal.includes('weekend')) {
       return 15000;
     }
     return 10000;
   }
 
   /**
-   * Generate campaign name
+   * Generate campaign name using OpenAI
    */
-  private generateCampaignName(goal: CampaignGoal): string {
+  private async generateCampaignName(goal: CampaignGoal): Promise<string> {
+    const client = getOpenAIClient();
+
+    if (client && isOpenAIEnabled()) {
+      try {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate a catchy, memorable campaign name for a ${goal.merchantType} business campaign.
+Requirements:
+- Max 5 words
+- No more than 30 characters total
+- Include the year ${new Date().getFullYear()}
+- Make it sound exciting and actionable
+- Examples: "Weekend Feast 2026", "Stay & Save 2026", "Fit January 2026"
+
+Return ONLY the campaign name, nothing else.`
+            },
+            {
+              role: 'user',
+              content: `Create a campaign name for a ${goal.merchantType} business targeting ${goal.location}`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 20,
+        });
+
+        const name = response.choices[0].message.content.trim();
+        if (name && name.length <= 40) {
+          return name;
+        }
+      } catch (error) {
+        console.error('OpenAI generateCampaignName error, using fallback:', error);
+      }
+    }
+
+    // Fallback to rule-based name generation
     const prefixes: Record<string, string[]> = {
       restaurant: ['Taste of', 'Foodie', 'Crave', 'Flavor'],
       hotel: ['Stay', 'Luxury', 'Escape', 'Getaway'],
@@ -152,12 +252,67 @@ export class AICampaignGenerator {
   }
 
   /**
-   * Select optimal channels based on goal
+   * Select optimal channels based on goal using OpenAI
    */
-  private selectChannels(goal: CampaignGoal, prefer?: AdType[]): ChannelConfig[] {
-    const channels: ChannelConfig[] = [];
+  private async selectChannels(goal: CampaignGoal, prefer?: AdType[]): Promise<ChannelConfig[]> {
+    const client = getOpenAIClient();
 
-    // Default channel recommendations by merchant type
+    if (client && isOpenAIEnabled()) {
+      try {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Recommend the best advertising channels for a ${goal.merchantType} business campaign.
+Return JSON with a "channels" array. Each channel should have:
+- type: one of "in-app" | "dooh" | "qr" | "broadcast" | "influencer" | "offline"
+- channels: array of specific channel names (e.g., ["whatsapp", "sms"])
+- reason: brief explanation of why this channel
+
+Available channel types:
+- broadcast: whatsapp, sms, email, push notification, voice
+- in-app: feed, search, banner, interstitial
+- dooh: restaurant_tv, transit, lobby, gym_screen, billboard
+- qr: table_tent, poster, window
+- influencer: instagram, youtube, tiktok
+- offline: standees, flyers, print
+
+Return 3-4 channels that make sense for the business type.
+Return ONLY valid JSON in this format: {"channels": [...]}`
+            },
+            {
+              role: 'user',
+              content: `${goal.merchantType} business in ${goal.location}, budget ${goal.budget}`
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.4,
+        });
+
+        const parsed = JSON.parse(response.choices[0].message.content);
+        if (parsed.channels && Array.isArray(parsed.channels)) {
+          return parsed.channels.map((ch: any) => ({
+            type: ch.type,
+            channels: ch.channels,
+            budget: 0,
+            bid: this.getDefaultBid(ch.type),
+            targeting: {},
+          }));
+        }
+      } catch (error) {
+        console.error('OpenAI selectChannels error, using fallback:', error);
+      }
+    }
+
+    // Fallback to rule-based channel selection
+    return this.selectChannelsFallback(goal, prefer);
+  }
+
+  /**
+   * Fallback channel selection logic
+   */
+  private selectChannelsFallback(goal: CampaignGoal, prefer?: AdType[]): ChannelConfig[] {
     const recommendations: Record<string, { type: AdType; channels: string[]; weight: number }[]> = {
       restaurant: [
         { type: 'broadcast', channels: ['whatsapp', 'sms'], weight: 35 },
@@ -189,17 +344,13 @@ export class AICampaignGenerator {
 
     const recs = recommendations[goal.merchantType] || recommendations.general;
 
-    for (const rec of recs) {
-      channels.push({
-        type: rec.type,
-        channels: rec.channels,
-        budget: 0, // Will be set by budget allocation
-        bid: this.getDefaultBid(rec.type),
-        targeting: {},
-      });
-    }
-
-    return channels;
+    return recs.map(rec => ({
+      type: rec.type,
+      channels: rec.channels,
+      budget: 0,
+      bid: this.getDefaultBid(rec.type),
+      targeting: {},
+    }));
   }
 
   /**
@@ -222,7 +373,6 @@ export class AICampaignGenerator {
    */
   private allocateBudget(totalBudget: number, channels: ChannelConfig[]): BudgetAllocation {
     const distribution = channels.map((channel, index) => {
-      // First channel gets more, decreasing
       const percentage = Math.max(10, 50 - (index * 10));
       const amount = Math.round(totalBudget * (percentage / 100));
       channel.budget = amount;
@@ -260,19 +410,59 @@ export class AICampaignGenerator {
    */
   private getPreferredHours(goal: CampaignGoal): number[] {
     if (goal.merchantType === 'restaurant') {
-      return [11, 12, 13, 18, 19, 20]; // Lunch & dinner rush
+      return [11, 12, 13, 18, 19, 20];
     }
     if (goal.merchantType === 'hotel') {
-      return [9, 10, 14, 15, 20, 21]; // Planning hours
+      return [9, 10, 14, 15, 20, 21];
     }
-    return [10, 11, 14, 15, 18, 19, 20]; // General business hours
+    return [10, 11, 14, 15, 18, 19, 20];
   }
 
   /**
-   * Generate creative content
+   * Generate creative content using OpenAI
    */
   private async generateCreative(goal: string, merchantType: string): Promise<CreativeContent> {
-    // AI-generated creative
+    const client = getOpenAIClient();
+
+    if (client && isOpenAIEnabled()) {
+      try {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate compelling ad creative for a ${merchantType} business.
+Return JSON with exactly these fields:
+- headline: catchy headline (max 10 words)
+- body: persuasive ad copy (2-3 sentences, highlight value proposition and urgency)
+- cta: clear call-to-action (2-4 words, action-oriented)
+- imagePrompt: description for AI image generation
+
+Make it sound natural, exciting, and specific to the business type.
+Use conversational Hindi-English (Hinglish) for restaurant/fitness/retail or formal English for hotel.`
+            },
+            {
+              role: 'user',
+              content: goal
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+        });
+
+        const parsed = JSON.parse(response.choices[0].message.content);
+        return {
+          headline: parsed.headline || '',
+          body: parsed.body || '',
+          cta: parsed.cta || 'Learn More',
+          imagePrompt: parsed.imagePrompt || '',
+        };
+      } catch (error) {
+        console.error('OpenAI generateCreative error, using fallback:', error);
+      }
+    }
+
+    // Fallback to predefined creatives
     const creatives: Record<string, { headline: string; body: string; cta: string }> = {
       restaurant: {
         headline: 'Taste That Speaks!',
@@ -309,8 +499,8 @@ export class AICampaignGenerator {
    */
   private estimateResults(budget: number, channels: ChannelConfig[]): Estimation {
     const avgCPM = 100;
-    const avgCTR = 0.02; // 2%
-    const avgConversionRate = 0.05; // 5%
+    const avgCTR = 0.02;
+    const avgConversionRate = 0.05;
 
     const impressions = (budget / avgCPM) * 1000;
     const clicks = impressions * avgCTR;
@@ -327,9 +517,51 @@ export class AICampaignGenerator {
   }
 
   /**
-   * Generate AI reasoning text
+   * Generate AI reasoning text using OpenAI
    */
-  private generateReasoning(goal: CampaignGoal, channels: ChannelConfig[]): string[] {
+  private async generateReasoning(goal: CampaignGoal, channels: ChannelConfig[]): Promise<string[]> {
+    const client = getOpenAIClient();
+
+    if (client && isOpenAIEnabled()) {
+      try {
+        const response = await client.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `Explain why these channels and settings were chosen for a ${goal.merchantType} campaign.
+Return JSON with a "reasoning" array of 3-4 short, conversational explanations (1 sentence each).
+Focus on: channel selection rationale, targeting logic, budget allocation reasoning.
+Make it sound like you're giving marketing advice.`
+            },
+            {
+              role: 'user',
+              content: `Channels: ${channels.map(c => c.type).join(', ')}
+Merchant: ${goal.merchantType} in ${goal.location}
+Budget: ${goal.budget}`
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.5,
+        });
+
+        const parsed = JSON.parse(response.choices[0].message.content);
+        if (parsed.reasoning && Array.isArray(parsed.reasoning)) {
+          return parsed.reasoning.slice(0, 4);
+        }
+      } catch (error) {
+        console.error('OpenAI generateReasoning error, using fallback:', error);
+      }
+    }
+
+    // Fallback to rule-based reasoning
+    return this.generateReasoningFallback(goal, channels);
+  }
+
+  /**
+   * Fallback reasoning generation
+   */
+  private generateReasoningFallback(goal: CampaignGoal, channels: ChannelConfig[]): string[] {
     const reasons: string[] = [];
 
     reasons.push(`Selected ${channels.length} channels based on ${goal.merchantType} industry patterns`);

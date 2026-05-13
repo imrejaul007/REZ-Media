@@ -7,16 +7,38 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { pricingBrain, type BudgetAllocation } from './services/pricingBrain';
 import { pricingEngine } from './services/pricingEngine';
+import { metricsMiddleware, getMetrics, getMetricsContentType } from './middleware/metrics';
+import { requestLogger, errorHandler, notFoundHandler } from './middleware/logger';
 
 const app = express();
 
+// Security middleware
 app.use(helmet());
 app.use(cors());
+
+// Body parsing
 app.use(express.json());
+
+// Request logging (must be early to log all requests)
+app.use(requestLogger());
+
+// Metrics collection
+app.use(metricsMiddleware);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'REZ-pricing-engine' });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    const metrics = await getMetrics();
+    res.set('Content-Type', getMetricsContentType());
+    res.send(metrics);
+  } catch (error) {
+    res.status(500).send('Error collecting metrics');
+  }
 });
 
 // ============================================================================
@@ -274,7 +296,12 @@ app.post('/api/campaigns/:id/cancel', async (req: Request, res: Response) => {
  * }
  */
 
+// Error handlers (must be after all routes)
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 4008;
 app.listen(PORT, () => {
   console.log(`REZ Pricing Engine running on port ${PORT}`);
+  console.log(`Metrics available at http://localhost:${PORT}/metrics`);
 });

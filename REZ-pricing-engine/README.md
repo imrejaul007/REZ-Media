@@ -205,3 +205,91 @@ npm start
 ```
 
 Or connect to Render for auto-deploy.
+
+## Monitoring
+
+The REZ Pricing Engine includes Prometheus metrics and structured logging for observability.
+
+### Prometheus Metrics
+
+Access metrics at `GET /metrics` in Prometheus text format.
+
+**Available Metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `http_requests_total` | Counter | Total HTTP requests by method, route, status |
+| `http_request_duration_seconds` | Histogram | Request latency distribution |
+| `http_errors_total` | Counter | HTTP errors (4xx, 5xx) by type |
+| `http_active_requests` | Gauge | Current concurrent requests |
+| `pricing_calculations_total` | Counter | Pricing calculations by ad type |
+| `pricing_calculation_duration_seconds` | Histogram | Pricing calculation latency |
+| `campaigns_created_total` | Counter | Campaigns created by status |
+| `business_errors_total` | Counter | Business logic errors |
+| `nodejs_*` | Various | Default Node.js metrics (CPU, memory, event loop) |
+
+**Response Time Buckets:** 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s, 30s
+
+### Prometheus Configuration
+
+Add to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'rez-pricing-engine'
+    static_configs:
+      - targets: ['localhost:4008']
+    scrape_interval: 15s
+```
+
+### Grafana Dashboard
+
+Import dashboards using the following query patterns:
+
+```promql
+# Request rate
+rate(http_requests_total[5m])
+
+# Error rate
+rate(http_errors_total[5m])
+
+# P99 latency
+histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+
+# Active requests
+http_active_requests
+```
+
+### Logging
+
+Structured JSON logs are output to stdout with the following fields:
+
+- `timestamp` - ISO 8601 timestamp
+- `level` - DEBUG, INFO, WARN, ERROR
+- `message` - Log message
+- `requestId` - Unique request identifier (also in `X-Request-ID` header)
+- Additional context fields
+
+**Environment Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | INFO | Minimum log level (DEBUG, INFO, WARN, ERROR) |
+| `SLOW_REQUEST_THRESHOLD_MS` | 1000 | Threshold for slow request warnings |
+| `LOG_REQUEST_BODY` | true | Include request body in logs |
+| `NODE_ENV` | development | Set to `production` to hide stack traces |
+
+### Health Check
+
+`GET /health` returns service status:
+
+```json
+{
+  "status": "ok",
+  "service": "REZ-pricing-engine"
+}
+```
+
+### Request Tracing
+
+Every request includes an `X-Request-ID` header for distributed tracing correlation.

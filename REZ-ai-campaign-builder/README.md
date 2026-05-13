@@ -80,8 +80,54 @@ npm install
 npm run dev
 ```
 
+## OpenAI Integration (Optional)
+
+The campaign generator uses GPT-4 for intelligent campaign creation when an OpenAI API key is provided. Without a key, it falls back to rule-based simulated responses.
+
+### Getting an API Key
+
+1. Sign up at [OpenAI Platform](https://platform.openai.com/)
+2. Navigate to [API Keys](https://platform.openai.com/api-keys)
+3. Create a new secret key
+4. Copy the key (starts with `sk-`)
+
+### Configuration
+
+Create a `.env` file (copy from `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Add your OpenAI API key:
+
+```bash
+OPENAI_API_KEY=sk-your-key-here
+```
+
+### What GPT-4 Handles
+
+| Feature | Without API Key | With OpenAI API |
+|---------|-----------------|-----------------|
+| Goal parsing | Rule-based detection | Natural language understanding |
+| Campaign names | Random templates | Context-aware generation |
+| Ad copy | Predefined templates | Custom, compelling copy |
+| Channel selection | Static recommendations | Dynamic, data-driven |
+| AI reasoning | Generic explanations | Specific, actionable insights |
+
+### Model Used
+
+- **Model**: `gpt-4o`
+- **Temperature**: 0.3-0.7 (varies by task)
+- **Max tokens**: 20-500 (task-dependent)
+
+### Cost Estimate
+
+Typical request uses ~500-1500 tokens. With GPT-4o pricing (~$5/1M input tokens), each campaign generation costs approximately $0.0025-0.0075.
+
 ## Environment
 
 ```
 PORT=4009
+OPENAI_API_KEY=sk-...  # Optional
 ```
