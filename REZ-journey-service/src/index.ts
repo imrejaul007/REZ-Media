@@ -1,22 +1,27 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import journeyRoutes from './routes/journey.routes';
 import { journeyWorker } from './workers/journeyWorker';
 import { logger } from './utils/logger';
+import { auth, rateLimit, requestId } from './middleware/auth';
 
 // Initialize Express app
 const app: Application = express();
 const PORT = process.env.PORT || 4019;
 
 // Middleware
+app.use(requestId);
+app.use(helmet());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Token']
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(rateLimit);
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {

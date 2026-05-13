@@ -7,23 +7,29 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { aiGenerator } from './services/aiGenerator';
+import { auth, rateLimit, requestId, errorHandler } from './middleware/auth';
 
 const app = express();
 
+app.use(requestId);
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(rateLimit);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'REZ-ai-campaign-builder' });
 });
 
+// Apply auth to API routes
+app.use('/api', auth);
+
 /**
  * POST /api/generate
  * Generate campaign from natural language goal
  */
-app.post('/api/generate', async (req: Request, res: Response) => {
+app.post('/generate', async (req: Request, res: Response) => {
   try {
     const { goal, merchantType, location, budget, preferChannels } = req.body;
 
@@ -49,7 +55,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
  * POST /api/generate-creative
  * Generate ad creative copy
  */
-app.post('/api/generate-creative', async (req: Request, res: Response) => {
+app.post('/generate-creative', async (req: Request, res: Response) => {
   try {
     const { goal, merchantType, product } = req.body;
 

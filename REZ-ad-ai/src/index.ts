@@ -4,9 +4,14 @@
 
 import express from 'express';
 import compression from 'compression';
+import helmet from 'helmet';
+import { auth, rateLimit, requestId, errorHandler } from './middleware/auth';
 
 const app = express();
+app.use(requestId);
+app.use(helmet());
 app.use(compression());
+app.use(rateLimit);
 app.use(express.json());
 
 const PORT = parseInt(process.env.PORT || '4021', 10);
@@ -16,9 +21,12 @@ if (!MONGODB) {
   throw new Error('MONGODB_URI environment variable is required');
 }
 
+// Apply auth to API routes
+app.use('/api', auth);
+
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
-app.post('/intent/predict', (req, res) => {
+app.post('/api/intent/predict', (req, res) => {
   const { userId, context } = req.body;
 
   // Simple prediction logic

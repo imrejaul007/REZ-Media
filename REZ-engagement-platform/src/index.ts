@@ -1,9 +1,11 @@
 import express, { Application, Request, Response } from 'express';
+import helmet from 'helmet';
 import { LoyaltyEngine } from './loyalty/loyalty-engine';
 import { OfferEngine } from './offers/offer-engine';
 import { GamificationEngine } from './gamification/gamification';
 import { ReferralEngine } from './referrals/referral-engine';
 import { CampaignManager } from './campaigns/campaign-manager';
+import { auth, rateLimit, requestId, errorHandler } from './middleware/auth';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -53,7 +55,10 @@ export class EngagementPlatform {
   }
 
   private setupMiddleware(): void {
+    this.app.use(requestId);
+    this.app.use(helmet());
     this.app.use(express.json());
+    this.app.use(rateLimit);
 
     this.app.use((req: Request, _res: Response, next) => {
       logger.info(`${req.method} ${req.path}`, {
@@ -85,6 +90,9 @@ export class EngagementPlatform {
     this.app.get('/health', (_req: Request, res: Response) => {
       res.json({ status: 'healthy', timestamp: new Date().toISOString() });
     });
+
+    // Apply auth to API routes
+    this.app.use('/api', auth);
 
     this.app.get('/api/loyalty/:userId', async (req: Request, res: Response) => {
       try {

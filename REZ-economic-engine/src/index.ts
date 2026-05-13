@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import mongoose from 'mongoose';
 import { config } from './config';
+import { auth } from './middleware/auth';
 
 // Routes
 import adminRoutes from './routes/admin.routes';
@@ -29,6 +30,9 @@ app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Apply auth to API routes
+app.use('/api', auth);
 
 // Health check
 app.get('/health', (req, res) => {

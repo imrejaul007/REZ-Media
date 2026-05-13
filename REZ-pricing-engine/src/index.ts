@@ -9,10 +9,12 @@ import { pricingBrain, type BudgetAllocation } from './services/pricingBrain';
 import { pricingEngine } from './services/pricingEngine';
 import { metricsMiddleware, getMetrics, getMetricsContentType } from './middleware/metrics';
 import { requestLogger, errorHandler, notFoundHandler } from './middleware/logger';
+import { auth, rateLimit, requestId } from './middleware/auth';
 
 const app = express();
 
 // Security middleware
+app.use(requestId);
 app.use(helmet());
 app.use(cors());
 
@@ -24,6 +26,12 @@ app.use(requestLogger());
 
 // Metrics collection
 app.use(metricsMiddleware);
+
+// Rate limiting
+app.use(rateLimit);
+
+// Apply auth to API routes
+app.use('/api', auth);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

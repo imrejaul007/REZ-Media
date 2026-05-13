@@ -1,7 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import { auth, rateLimit, requestId, errorHandler } from './middleware/auth';
 
 // Import rankers and engines
 import {
@@ -56,7 +58,10 @@ const recommendationBlend = new RecommendationBlend('relevance_balanced');
 const app = express();
 
 // Middleware
+app.use(requestId);
+app.use(helmet());
 app.use(cors());
+app.use(rateLimit);
 app.use(express.json());
 
 // Request logging
@@ -112,6 +117,9 @@ const SearchRequestSchema = z.object({
   }).optional(),
   strategy: z.enum(Object.keys(STRATEGIES)).optional().default('relevance_balanced'),
 });
+
+// Apply auth to API routes
+app.use('/api', auth);
 
 // Search endpoint
 app.post('/search', async (req: Request, res: Response) => {

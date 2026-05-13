@@ -1,0 +1,62 @@
+{
+  "name": "adbazaar",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier --write .",
+    "db:push": "supabase db push"
+  },
+  "dependencies": {
+    "@react-google-maps/api": "^2.20.3",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.78.0",
+    "@upstash/redis": "^1.37.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "escape-html": "^1.0.3",
+    "lucide-react": "^1.7.0",
+    "next": "16.2.4",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "speakeasy": "^2.0.0",
+    "tailwind-merge": "^3.5.0",
+    "twilio": "^6.0.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "overrides": {
+    "postcss": ">=8.5.10"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/speakeasy": "^2.0.10",
+    "@types/twilio": "^3.19.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.2",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-testing-library": "^7.4.1",
+    "jsdom": "^26.1.0",
+    "msw": "^2.8.8",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

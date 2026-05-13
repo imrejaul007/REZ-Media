@@ -1,0 +1,26 @@
+export const COMMISSION_RATES: Record<string, number> = {
+  outdoor_ooh: 12,
+  transit_infrastructure: 12,
+  property_spaces: 12,
+  local_business: 15,
+  print_broadcast: 10,
+  influencer: 20,
+  digital: 18,
+  unconventional: 15,
+}
+
+export const LISTING_CATEGORIES = {
+  outdoor_ooh: { label: 'Outdoor & OOH', subcategories: ['Billboard / Hoarding', 'Digital Billboard', 'Bus Advertising', 'Auto Rickshaw', 'Cab / Taxi', 'Truck / Tempo', 'E-Rickshaw', 'Personal Car Wrap', 'School Bus', 'Wall Painting', 'Mobile Van', 'Street Furniture'] },
+  transit_infrastructure: { label: 'Transit & Infrastructure', subcategories: ['Metro Station', 'Metro Train Wrap', 'Airport Terminal', 'Airport Trolley', 'Railway Station', 'Train Exterior', 'Highway Toll Plaza', 'Parking Lot', 'ATM Kiosk', 'Petrol Pump'] },
+  property_spaces: { label: 'Property & Spaces', subcategories: ['Mall & Retail', 'Cinema / Multiplex', 'Society Gate Board', 'Society Notice Board', 'Office Building Lobby', 'Co-working Space', 'Hospital Waiting Room', 'Gym / Fitness Center', 'Event & Exhibition', 'Washroom'] },
+  local_business: { label: 'Local Business Surfaces', subcategories: ['Shop Window Display', 'Counter / Checkout Display', 'Restaurant Table Tent', 'Restaurant TV Screen', 'Receipt Advertising', 'Shopping Bag Branding', 'Salon Mirror', 'WiFi Splash Page', 'Delivery Bag / Box', 'Delivery Helmet', 'Food Tray Liner'] },
+  print_broadcast: { label: 'Print & Broadcast', subcategories: ['Newspaper Ad', 'Magazine Ad', 'Radio Jingle / Spot', 'Radio RJ Mention', 'TV Ad Spot', 'TV Ticker / Scroll', 'TV Show Sponsorship', 'News Channel Segment'] },
+  influencer: { label: 'Influencer', subcategories: ['Instagram Feed Post', 'Instagram Story', 'Instagram Reel', 'Instagram Bio Link', 'Instagram Caption Mention', 'Instagram Live Mention', 'YouTube Sponsored Video', 'YouTube Pre/Mid-Roll', 'LinkedIn Post', 'Twitter/X Thread'] },
+  digital: { label: 'Digital Placements', subcategories: ['Website Banner', 'Blog / Content Sponsorship', 'Newsletter / Email Sponsorship', 'Podcast Sponsorship', 'Mobile App Ad', 'WhatsApp Broadcast', 'Telegram Channel', 'App Loading / Splash Screen'] },
+  unconventional: { label: 'Unconventional / Ambient', subcategories: ['Terrace / Rooftop', 'Staircase / Corridor Walls', 'Email Signature', 'Branded QR Code Placement', 'Profile Takeover', 'Custom / Other'] },
+}
+
+export const DEFAULT_COINS_PER_SCAN = 20
+export const DEFAULT_VISIT_BONUS_COINS = 100
+export const DEFAULT_PURCHASE_BONUS_PCT = 5
+export const QR_SCAN_COOLDOWN_HOURS = 24

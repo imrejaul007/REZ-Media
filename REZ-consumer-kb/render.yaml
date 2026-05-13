@@ -1,0 +1,48 @@
+# Consumer Knowledge Base Service
+# Deploy to Render
+
+services:
+  - type: web
+    name: rez-consumer-kb
+    runtime: node
+    region: singapore
+    plan: starter
+
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 4010
+
+      - key: MONGODB_URI
+        sync: false
+        # Set in Render dashboard or via CLI:
+        # render-cli secrets set MONGODB_URI="mongodb+srv://user:pass@cluster.mongodb.net/rez-consumer-kb"
+
+      - key: JWT_SECRET
+        sync: false
+        # Set in Render dashboard or via CLI:
+        # render-cli secrets set JWT_SECRET="your-secure-jwt-secret"
+
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+        # JSON map of service tokens for internal communication
+        # Example: {"intent-graph":"token123","payment":"token456"}
+
+      - key: LOG_LEVEL
+        value: info
+
+      - key: CORS_ORIGIN
+        value: "*"
+        # Restrict in production: "https://rez-app.com,https://admin.rez-app.com"
+
+      - key: REDIS_URL
+        sync: false
+        # Optional: For caching and real-time updates

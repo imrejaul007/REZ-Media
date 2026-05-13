@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: rez-graph-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10008
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_SERVICE_TOKENS_JSON
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://rez.app,https://admin.rez.app
