@@ -17,11 +17,11 @@
 
 ## RABTUL Services Used
 
-| Service | Status | Files |
-|---------|--------|-------|
-| Payment | ✅ Connected | `razorpay.ts` |
-| Notifications | ✅ Connected | `notification.service.ts` |
-| Auth | ✅ Connected | |
+| Service | Status | Migration | Files |
+|---------|--------|-----------|-------|
+| Payment | ✅ Connected | Complete | `razorpay.ts`, `razorpayService.ts`, `razorpayGateway.ts` |
+| Notifications | ✅ Connected | Complete | `notification.service.ts` |
+| Auth | ✅ Connected | - | |
 
 ---
 
