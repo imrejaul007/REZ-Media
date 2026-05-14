@@ -17,7 +17,8 @@ export class SyncWorker {
   private config: SyncWorkerConfig;
   private syncService = getSyncService();
   private isRunning: boolean = false;
-  private lastSyncTime: Map<Platform, Date> = new Map();
+  // Using plain object instead of Map for simple key-value tracking
+  private lastSyncTime: Record<Platform, Date> = {} as Record<Platform, Date>;
 
   constructor(config?: Partial<SyncWorkerConfig>) {
     this.config = {
@@ -99,7 +100,7 @@ export class SyncWorker {
               break;
           }
 
-          this.lastSyncTime.set(platform, new Date());
+          this.lastSyncTime[platform] = new Date();
           console.log(
             `${platform} sync completed: ${result.processedItems} processed, ${result.failedItems} failed`
           );
@@ -139,7 +140,7 @@ export class SyncWorker {
         break;
     }
 
-    this.lastSyncTime.set(platform, new Date());
+    this.lastSyncTime[platform] = new Date();
     return result;
   }
 
@@ -164,13 +165,13 @@ export class SyncWorker {
         break;
     }
 
-    this.lastSyncTime.set(platform, new Date());
+    this.lastSyncTime[platform] = new Date();
     return result;
   }
 
   // Get last sync time for a platform
   getLastSyncTime(platform: Platform): Date | undefined {
-    return this.lastSyncTime.get(platform);
+    return this.lastSyncTime[platform];
   }
 
   // Check if sync is currently running
@@ -213,7 +214,7 @@ export class SyncWorker {
       intervalMinutes: this.config.syncIntervalMinutes,
       platforms: [...this.config.platforms],
       lastSyncTimes: Object.fromEntries(
-        this.config.platforms.map((p) => [p, this.lastSyncTime.get(p) || null])
+        this.config.platforms.map((p) => [p, this.lastSyncTime[p] || null])
       ),
     };
   }

@@ -247,9 +247,9 @@ export class CampaignWorker {
     } catch (error) {
       throw error;
     } finally {
-      // Remove from current calls (with delay to track active calls)
-      setTimeout(() => {
-        this.currentCalls.delete(callId);
+      // Remove from current calls (with delay to track active calls) using Redis
+      setTimeout(async () => {
+        await this.removeCurrentCall(callId);
       }, 5000);
     }
   }
@@ -357,9 +357,11 @@ export class CampaignWorker {
       status: { $in: [CampaignStatus.RUNNING, CampaignStatus.SCHEDULED] }
     });
 
+    const currentCallsCount = await this.getCurrentCallsCount();
+
     return {
       queueSize,
-      currentProcessing: this.currentCalls.size,
+      currentProcessing: currentCallsCount,
       activeCampaigns
     };
   }
@@ -388,16 +390,17 @@ export class CampaignWorker {
   /**
    * Get worker status
    */
-  getStatus(): {
+  async getStatus(): Promise<{
     isRunning: boolean;
     isProcessing: boolean;
     currentCalls: number;
     maxConcurrentCalls: number;
-  } {
+  }> {
+    const currentCallsCount = await this.getCurrentCallsCount();
     return {
       isRunning: this.isRunning,
       isProcessing: this.isProcessing,
-      currentCalls: this.currentCalls.size,
+      currentCalls: currentCallsCount,
       maxConcurrentCalls: this.config.maxConcurrentCalls
     };
   }

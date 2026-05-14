@@ -1,0 +1,12 @@
+{
+  "name": "rez-partner-sdk",
+  "version": "1.0.0",
+  "description": "Partner SDK for third-party apps to join REZ ad network",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
