@@ -31,7 +31,7 @@ export interface InternalServiceToken {
   token: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET!;
 const INTERNAL_SERVICE_TOKENS_JSON = process.env.INTERNAL_SERVICE_TOKENS_JSON || '{}';
 
 let internalServiceTokens: Record<string, string> = {};

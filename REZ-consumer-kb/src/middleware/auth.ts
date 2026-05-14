@@ -12,7 +12,7 @@ export interface AuthRequest extends Request {
   internalService?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET!;
 const INTERNAL_SERVICE_TOKENS_JSON = process.env.INTERNAL_SERVICE_TOKENS_JSON || '{}';
 
 let INTERNAL_SERVICE_TOKENS: Record<string, string>;

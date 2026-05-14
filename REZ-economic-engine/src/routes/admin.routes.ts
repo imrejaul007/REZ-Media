@@ -33,7 +33,7 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction) =
     try {
       const token = authHeader.slice(7);
       const jwt = await import('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret') as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
       if (decoded.role === 'admin' || decoded.role === 'super_admin') {
         return next();
       }

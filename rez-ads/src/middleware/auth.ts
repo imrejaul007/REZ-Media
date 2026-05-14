@@ -36,7 +36,7 @@ export const AuthHeadersSchema = z.object({
 const INTERNAL_TOKENS = JSON.parse(
   process.env.INTERNAL_SERVICE_TOKENS_JSON || '{}'
 );
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 /**
  * JWT Authentication middleware

@@ -23,7 +23,7 @@ interface TargetData {
 }
 
 export class CampaignService {
-  private executionStats: Map<string, CampaignExecutionStats> = new Map();
+  private executionStats: Record<string, CampaignExecutionStats> = {} as Record<string, CampaignExecutionStats>;
 
   /**
    * Create a new campaign
@@ -161,7 +161,7 @@ export class CampaignService {
     }
 
     // Initialize execution stats
-    this.executionStats.set(campaignId, {
+    this.executionStats[campaignId] = {
       campaignId,
       startedAt: new Date(),
       totalTargets: 0,
@@ -203,7 +203,7 @@ export class CampaignService {
     };
 
     // Update stats
-    const stats = this.executionStats.get(campaignId);
+    const stats = this.executionStats[campaignId];
     if (stats) {
       stats.totalTargets = targets.length;
       stats.pendingCalls = targets.length;
@@ -428,7 +428,7 @@ export class CampaignService {
    * Get campaign execution stats
    */
   getExecutionStats(campaignId: string): CampaignExecutionStats | undefined {
-    return this.executionStats.get(campaignId);
+    return this.executionStats[campaignId];
   }
 
   /**
@@ -520,7 +520,7 @@ export class CampaignService {
       },
       callStats,
       transcriptStats,
-      executionStats: this.executionStats.get(campaignId)
+      executionStats: this.executionStats[campaignId]
     };
   }
 
