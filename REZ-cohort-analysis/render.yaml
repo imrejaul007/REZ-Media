@@ -1,0 +1,79 @@
+# Render Blueprint for REZ Cohort Analysis Service
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: rez-cohort-analysis
+    runtime: node
+    region: singapore
+    plan: starter
+
+    # Build configuration
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 4027
+
+      - key: MONGODB_URI
+        fromDatabase:
+          name: rez-mongodb
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rez-redis
+          envVarKey: REDIS_URL
+
+      - key: INTERNAL_SERVICE_TOKEN
+        generateValue: true
+
+      - key: LOG_LEVEL
+        value: info
+
+      - key: CORS_ORIGIN
+        value: https://rez-media-app.onrender.com
+
+    # Health check
+    healthCheckPath: /health
+
+    # Auto-deploy from main branch
+    autoDeploy: true
+
+    # Preflight checks
+    preDeployCommand: npm run build
+
+# ===========================================
+# Managed Services
+# ===========================================
+
+databases:
+  - name: rez-mongodb
+    plan: starter
+    databaseName: rez_cohort_analysis
+    ipAllowList: []
+
+# Redis cache (optional but recommended)
+redis:
+  - name: rez-redis
+    plan: starter
+    ipAllowList: []
+
+# ===========================================
+# Environment Groups
+# ===========================================
+
+# Production environment
+envVarGroups:
+  - name: production-config
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info

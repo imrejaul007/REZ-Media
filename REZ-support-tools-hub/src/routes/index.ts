@@ -19,6 +19,8 @@ import { getSyncService } from '../services/syncService';
 import { getMappingService } from '../services/mappingService';
 import { getSyncWorker } from '../workers/syncWorker';
 import config from '../config';
+import { authMiddleware } from '../middleware/auth';
+import { rateLimitMiddleware } from '../middleware/rateLimit';
 
 // Validation schemas
 const connectSchema = z.object({

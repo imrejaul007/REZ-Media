@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REZ Live Chat Widget Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #1f2937;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      font-size: 24px;
+      color: #374151;
+      margin-bottom: 16px;
+    }
+
+    p {
+      color: #6b7280;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .feature {
+      background: #f9fafb;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .feature-title {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .code-block {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 20px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .code-block .keyword {
+      color: #c084fc;
+    }
+
+    .code-block .string {
+      color: #86efac;
+    }
+
+    .code-block .comment {
+      color: #6b7280;
+    }
+
+    .setup-steps {
+      counter-reset: step;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .step-number {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      margin-right: 16px;
+    }
+
+    .step-content {
+      flex: 1;
+      padding-top: 4px;
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .config-table th,
+    .config-table td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .config-table th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .config-table td {
+      color: #6b7280;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-new {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>REZ Live Chat Widget</h1>
+      <p>
+        An embeddable live chat widget for websites with real-time messaging,
+        file attachments, quick replies, typing indicators, and more.
+      </p>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">💬</div>
+          <div class="feature-title">Real-time Chat</div>
+          <div class="feature-desc">Instant messaging with WebSocket support</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📎</div>
+          <div class="feature-title">File Attachments</div>
+          <div class="feature-desc">Share images, documents, and files</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Quick Replies</div>
+          <div class="feature-desc">Pre-defined response options</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">👤</div>
+          <div class="feature-title">Agent Support</div>
+          <div class="feature-desc">Smart routing and status</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🎨</div>
+          <div class="feature-title">Custom Branding</div>
+          <div class="feature-desc">Colors, logos, and fonts</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📱</div>
+          <div class="feature-title">Responsive</div>
+          <div class="feature-desc">Works on all devices</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Quick Setup</h2>
+
+      <div class="setup-steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Add the Script</div>
+            <div class="step-desc">Include the widget script in your HTML</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Create Container</div>
+            <div class="step-desc">Add a container element for the widget</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Initialize</div>
+            <div class="step-desc">Configure and initialize the widget</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+<span class="comment">&lt;!-- Add the widget container --&gt;</span>
+&lt;<span class="keyword">div</span> <span class="keyword">id</span>=<span class="string">"rez-chat"</span>&gt;&lt;/<span class="keyword">div</span>&gt;
+
+<span class="comment">&lt;!-- Load the widget --&gt;</span>
+&lt;<span class="keyword">script</span> <span class="keyword">src</span>=<span class="string">"https://cdn.rezapp.com/live-chat-widget/widget.umd.js"</span>&gt;&lt;/<span class="keyword">script</span>&gt;
+&lt;<span class="keyword">script</span>&gt;
+  <span class="keyword">window</span>.ReZLiveChat.create(<span class="string">'rez-chat'</span>, {
+    apiUrl: <span class="string">'https://api.example.com'</span>,
+    apiKey: <span class="string">'your-api-key'</span>,
+    companyName: <span class="string">'Acme Support'</span>,
+    primaryColor: <span class="string">'#6366f1'</span>
+  });
+&lt;/<span class="keyword">script</span>&gt;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Configuration Options</h2>
+
+      <table class="config-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>apiUrl</code></td>
+            <td>string</td>
+            <td>-</td>
+            <td>Your chat API endpoint</td>
+          </tr>
+          <tr>
+            <td><code>apiKey</code></td>
+            <td>string</td>
+            <td>-</td>
+            <td>API key for authentication</td>
+          </tr>
+          <tr>
+            <td><code>companyName</code></td>
+            <td>string</td>
+            <td>Support</td>
+            <td>Display name for your company</td>
+          </tr>
+          <tr>
+            <td><code>primaryColor</code></td>
+            <td>string</td>
+            <td>#6366f1</td>
+            <td>Primary accent color</td>
+          </tr>
+          <tr>
+            <td><code>position</code></td>
+            <td>string</td>
+            <td>bottom-right</td>
+            <td>Chat bubble position</td>
+          </tr>
+          <tr>
+            <td><code>enableFileUpload</code></td>
+            <td>boolean</td>
+            <td>true</td>
+            <td>Enable file attachments</td>
+          </tr>
+          <tr>
+            <td><code>enableQuickReplies</code></td>
+            <td>boolean</td>
+            <td>true</td>
+            <td>Enable quick reply buttons</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>JavaScript API</h2>
+
+      <div class="code-block">
+<span class="comment">// Get widget instance</span>
+<span class="keyword">const</span> chat = <span class="keyword">window</span>.ReZLiveChat.getInstance();
+
+<span class="comment">// Listen to events</span>
+chat.on(<span class="string">'message_received'</span>, (event) => {
+  console.log(<span class="string">'New message:'</span>, event.data);
+});
+
+<span class="comment">// Programmatic actions</span>
+chat.open();
+chat.close();
+chat.toggle();
+
+<span class="comment">// Send message</span>
+<span class="keyword">await</span> chat.sendMessage(<span class="string">'Hello!'</span>);
+
+<span class="comment">// Get state</span>
+<span class="keyword">const</span> state = chat.getState();
+console.log(state.messages, state.agent);
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Events</h2>
+
+      <table class="config-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>ready</code></td><td>Widget initialized</td></tr>
+          <tr><td><code>open</code></td><td>Chat window opened</td></tr>
+          <tr><td><code>close</code></td><td>Chat window closed</td></tr>
+          <tr><td><code>message_sent</code></td><td>Message sent successfully</td></tr>
+          <tr><td><code>message_received</code></td><td>New message received</td></tr>
+          <tr><td><code>agent_joined</code></td><td>Agent joined session</td></tr>
+          <tr><td><code>agent_left</code></td><td>Agent left session</td></tr>
+          <tr><td><code>typing_start</code></td><td>User started typing</td></tr>
+          <tr><td><code>typing_stop</code></td><td>User stopped typing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>
+        REZ Live Chat Widget v1.0.0 |
+        <a href="https://rezapp.com/docs/live-chat">Documentation</a> |
+        <a href="https://rezapp.com/support">Support</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Widget Container -->
+  <div id="rez-chat"></div>
+
+  <!-- Load Widget -->
+  <!-- In production, replace with your actual widget URL -->
+  <!--
+  <script src="https://cdn.rezapp.com/live-chat-widget/widget.umd.js"></script>
+  <script>
+    window.ReZLiveChat.create('rez-chat', {
+      apiUrl: 'https://api.example.com',
+      apiKey: 'demo-api-key',
+      companyName: 'REZ Support',
+      primaryColor: '#6366f1',
+      secondaryColor: '#4f46e5',
+      welcomeMessage: 'Welcome to REZ Support! How can we help you today?',
+      position: 'bottom-right',
+      enableFileUpload: true,
+      enableQuickReplies: true,
+      enableEmoji: true
+    });
+  </script>
+  -->
+</body>
+</html>
