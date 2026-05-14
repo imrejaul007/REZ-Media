@@ -1,0 +1,30 @@
+{
+  "name": "@rez-app/sdk-host",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REZ SDK Host - Monorepo for 3rd party SDK packages",
+  "workspaces": [
+    "ads-sdk",
+    "loyalty-sdk",
+    "analytics-sdk",
+    "payments-sdk"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:ads": "npm run build --workspace=@rez-app/ads-sdk",
+    "build:loyalty": "npm run build --workspace=@rez-app/loyalty-sdk",
+    "build:analytics": "npm run build --workspace=@rez-app/analytics-sdk",
+    "build:payments": "npm run build --workspace=@rez-app/payments-sdk",
+    "dev": "npm run dev --workspaces --parallel",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules"
+  },
+  "keywords": [
+    "rez",
+    "sdk",
+    "sdk-host"
+  ],
+  "author": "REZ Media",
+  "license": "MIT"
+}
