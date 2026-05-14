@@ -1,0 +1,3 @@
+{
+  "/api/webhooks/rez-purchase/route": "app/api/webhooks/rez-purchase/route.js"
+}

@@ -1,0 +1,3 @@
+{
+  "/api/cron/dlq-retry/route": "app/api/cron/dlq-retry/route.js"
+}

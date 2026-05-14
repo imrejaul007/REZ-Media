@@ -1,0 +1,3 @@
+{
+  "/(admin)/admin/qr-scans/page": "app/(admin)/admin/qr-scans/page.js"
+}

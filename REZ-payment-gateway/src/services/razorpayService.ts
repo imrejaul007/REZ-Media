@@ -1,18 +1,46 @@
 /**
- * Razorpay Service - Full Razorpay SDK wrapper
+ * RABTUL Payment Service - Replaces local Razorpay SDK
+ *
+ * Uses centralized RABTUL Payment Service for all payment operations.
+ * This prevents duplicate Razorpay instances across services.
+ *
+ * @see RABTUL-Technologies/RAP.md
  */
 
-import Razorpay from 'razorpay';
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'https://rez-payment-service.onrender.com';
+const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || '';
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
+interface PaymentHeaders {
+  'Content-Type': string;
+  'X-Internal-Token': string;
+  'X-Internal-Service': string;
+}
+
+const headers: PaymentHeaders = {
+  'Content-Type': 'application/json',
+  'X-Internal-Token': INTERNAL_SERVICE_TOKEN,
+  'X-Internal-Service': 'rez-payment-gateway',
+};
+
+async function rabtulRequest<T>(endpoint: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${PAYMENT_SERVICE_URL}${endpoint}`, {
+    method: body ? 'POST' : 'GET',
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`RABTUL Payment Error: ${response.status} - ${error}`);
+  }
+
+  return response.json();
+}
 
 export class RazorpayService {
 
   /**
-   * Create order for wallet top-up
+   * Create order for wallet top-up via RABTUL
    */
   async createOrder(
     amount: number,
@@ -20,45 +48,53 @@ export class RazorpayService {
     notes: Record<string, string> = {}
   ): Promise<{ orderId: string; amount: number; currency: string }> {
     try {
-      const order = await razorpay.orders.create({
-        amount: Math.round(amount * 100), // Razorpay uses paise
+      const result = await rabtulRequest<any>('/api/payments/initiate', {
+        amount: Math.round(amount * 100), // RABTUL expects paise
         currency: 'INR',
         receipt,
         notes,
       });
 
       return {
-        orderId: order.id,
-        amount: order.amount / 100,
-        currency: order.currency,
+        orderId: result.orderId || result.id,
+        amount: (result.amount || amount * 100) / 100,
+        currency: result.currency || 'INR',
       };
     } catch (error: any) {
-      throw new Error(`Razorpay order creation failed: ${error.message}`);
+      throw new Error(`RABTUL Payment order creation failed: ${error.message}`);
     }
   }
 
   /**
-   * Verify payment signature
+   * Verify payment signature via RABTUL
    */
-  verifySignature(orderId: string, paymentId: string, signature: string): boolean {
-    const crypto = require('crypto-js');
-    const expectedSignature = crypto.HmacSHA256(`${orderId}|${paymentId}`, process.env.RAZORPAY_KEY_SECRET || '');
-    return expectedSignature.toString() === signature;
+  async verifySignature(orderId: string, paymentId: string, signature: string): Promise<boolean> {
+    try {
+      const result = await rabtulRequest<{ success: boolean }>('/api/payments/verify', {
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        razorpay_signature: signature,
+      });
+
+      return result.success === true;
+    } catch (error: any) {
+      throw new Error(`RABTUL Payment verification failed: ${error.message}`);
+    }
   }
 
   /**
-   * Get payment details
+   * Get payment details via RABTUL
    */
   async getPayment(paymentId: string): Promise<any> {
     try {
-      return await razorpay.payments.fetch(paymentId);
+      return await rabtulRequest(`/api/payments/${paymentId}`);
     } catch (error: any) {
-      throw new Error(`Failed to fetch payment: ${error.message}`);
+      throw new Error(`RABTUL Payment fetch failed: ${error.message}`);
     }
   }
 
   /**
-   * Create payout to bank account
+   * Create payout to bank account via RABTUL
    */
   async createPayout(params: {
     accountNumber: string;
@@ -68,109 +104,47 @@ export class RazorpayService {
     purpose?: string;
   }): Promise<{ payoutId: string; status: string }> {
     try {
-      const payout = await razorpay.payments.createPayout({
-        account_number: params.accountNumber,
-        fund_account: {
-          account_type: 'bank_account',
-          bank_account: {
-            name: params.name,
-            ifsc: params.ifsc,
-            account_number: params.accountNumber,
-          },
-        },
-        amount: Math.round(params.amount * 100),
-        currency: 'INR',
-        mode: 'IMPS',
-        purpose: params.purpose || 'payout',
-      });
+      const result = await rabtulRequest<any>('/api/payments/payout', params);
 
       return {
-        payoutId: payout.id,
-        status: payout.status,
+        payoutId: result.payoutId || result.id,
+        status: result.status || 'pending',
       };
     } catch (error: any) {
-      throw new Error(`Payout failed: ${error.message}`);
+      throw new Error(`RABTUL Payout creation failed: ${error.message}`);
     }
   }
 
   /**
-   * Create refund
+   * Refund payment via RABTUL
    */
-  async createRefund(paymentId: string, amount?: number): Promise<{ refundId: string; status: string }> {
+  async refundPayment(paymentId: string, amount?: number): Promise<{ refundId: string; status: string }> {
     try {
-      const refund = await razorpay.payments.refund(paymentId, {
+      const result = await rabtulRequest<any>('/api/payments/refund', {
+        payment_id: paymentId,
         amount: amount ? Math.round(amount * 100) : undefined,
       });
 
       return {
-        refundId: refund.id,
-        status: refund.status,
+        refundId: result.refundId || result.id,
+        status: result.status || 'processed',
       };
     } catch (error: any) {
-      throw new Error(`Refund failed: ${error.message}`);
+      throw new Error(`RABTUL Refund failed: ${error.message}`);
     }
   }
 
   /**
-   * Get refund details
+   * Get order details via RABTUL
    */
-  async getRefund(refundId: string): Promise<any> {
+  async getOrder(orderId: string): Promise<any> {
     try {
-      return await razorpay.refunds.fetch(refundId);
+      return await rabtulRequest(`/api/payments/status/${orderId}`);
     } catch (error: any) {
-      throw new Error(`Failed to fetch refund: ${error.message}`);
-    }
-  }
-
-  /**
-   * Create customer
-   */
-  async createCustomer(params: {
-    name: string;
-    email?: string;
-    phone: string;
-  }): Promise<{ customerId: string }> {
-    try {
-      const customer = await razorpay.customers.create({
-        name: params.name,
-        email: params.email,
-        contact: params.phone,
-      });
-
-      return { customerId: customer.id };
-    } catch (error: any) {
-      throw new Error(`Customer creation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Add card to customer
-   */
-  async addCard(customerId: string, card: {
-    card_number: string;
-    name: string;
-    expiry_month: string;
-    expiry_year: string;
-    cvv: string;
-  }): Promise<{ token: string }> {
-    try {
-      const token = await razorpay.customers.createToken(customerId, {
-        customer_id: customerId,
-        method: 'card',
-        card: {
-          number: card.card_number,
-          cvv: card.cvv,
-          expiry_month: card.expiry_month,
-          expiry_year: card.expiry_year,
-          name: card.name,
-        },
-      });
-
-      return { token: token.id };
-    } catch (error: any) {
-      throw new Error(`Card addition failed: ${error.message}`);
+      throw new Error(`RABTUL Order fetch failed: ${error.message}`);
     }
   }
 }
 
+// Export singleton instance
 export const razorpayService = new RazorpayService();

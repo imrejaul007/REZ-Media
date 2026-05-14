@@ -1,0 +1,10 @@
+var R=require("../../chunks/ssr/[turbopack]_runtime.js")("server/app/_global-error/page.js")
+R.c("server/chunks/ssr/[root-of-the-server]__13p0fyn._.js")
+R.c("server/chunks/ssr/0xls_next_dist_0~psx4_._.js")
+R.c("server/chunks/ssr/0xls_next_dist_esm_build_templates_app-page_0.gpi9i.js")
+R.c("server/chunks/ssr/[root-of-the-server]__04miq42._.js")
+R.c("server/chunks/ssr/_0uno54f._.js")
+R.c("server/chunks/ssr/0xls_next_dist_client_components_builtin_global-error_0ljnxtu.js")
+R.c("server/chunks/ssr/adBazaar__next-internal_server_app__global-error_page_actions_07uafrx.js")
+R.m(45013)
+module.exports=R.m(45013).exports

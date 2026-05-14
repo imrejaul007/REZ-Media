@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(buyer)/layout,_N_T_/(buyer)/buyer/layout,_N_T_/(buyer)/buyer/dashboard/layout,_N_T_/(buyer)/buyer/dashboard/page,_N_T_/buyer/dashboard"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KGJ1eWVyKQ/buyer/dashboard/__PAGE__",
+    "/!KGJ1eWVyKQ/buyer/dashboard",
+    "/!KGJ1eWVyKQ/buyer",
+    "/!KGJ1eWVyKQ",
+    "/_index",
+    "/_head"
+  ]
+}

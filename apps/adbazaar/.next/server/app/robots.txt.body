@@ -1,0 +1,8 @@
+User-Agent: *
+Allow: /
+Disallow: /vendor/
+Disallow: /buyer/
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://adbazaar.in/sitemap.xml

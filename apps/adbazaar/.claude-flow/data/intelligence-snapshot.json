@@ -1,0 +1,134 @@
+[
+  {
+    "timestamp": 1775606578267,
+    "nodes": 25,
+    "edges": 14,
+    "pageRankSum": 0.9999999999999999,
+    "confidences": [
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.495,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-project_adbazaar_go_live-app",
+        "summary": "App",
+        "confidence": 0.495,
+        "pageRank": 0.08587981401668657,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_adbazaar_go_live-rez-integration",
+        "summary": "REZ integration",
+        "confidence": 0.495,
+        "pageRank": 0.07872906297344526,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_services_urls-environment-variables--critica",
+        "summary": "Environment Variables (critical)",
+        "confidence": 0.495,
+        "pageRank": 0.07872906297344526,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_adbazaar_go_live-google-maps",
+        "summary": "Google Maps",
+        "confidence": 0.495,
+        "pageRank": 0.07031629409374128,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_services_urls-infrastructure",
+        "summary": "Infrastructure",
+        "confidence": 0.495,
+        "pageRank": 0.07031629409374128,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_adbazaar_go_live-razorpay",
+        "summary": "Razorpay",
+        "confidence": 0.495,
+        "pageRank": 0.06041890877633432,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_services_urls-key-backend-endpoints",
+        "summary": "Key Backend Endpoints",
+        "confidence": 0.495,
+        "pageRank": 0.06041890877633432,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_overview-current-state--phase-1-built-",
+        "summary": "Current State (Phase 1 built)",
+        "confidence": 0.495,
+        "pageRank": 0.048774975999268375,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_adbazaar_go_live-supabase",
+        "summary": "Supabase",
+        "confidence": 0.495,
+        "pageRank": 0.048774975999268375,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-reference_services_urls-monolith---microservice-mappin",
+        "summary": "Monolith → Microservice Mapping",
+        "confidence": 0.495,
+        "pageRank": 0.048774975999268375,
+        "accessCount": 0
+      }
+    ]
+  }
+]

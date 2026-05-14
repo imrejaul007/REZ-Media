@@ -1,0 +1,3 @@
+{
+  "/api/cron/budget-alerts/route": "app/api/cron/budget-alerts/route.js"
+}

@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(auth)/layout,_N_T_/(auth)/verify-2fa/layout,_N_T_/(auth)/verify-2fa/page,_N_T_/verify-2fa"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KGF1dGgp/verify-2fa/__PAGE__",
+    "/!KGF1dGgp/verify-2fa",
+    "/!KGF1dGgp",
+    "/_index",
+    "/_head"
+  ]
+}

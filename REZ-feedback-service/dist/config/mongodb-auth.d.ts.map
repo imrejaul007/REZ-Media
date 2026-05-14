@@ -1,0 +1,1 @@
+{"version":3,"file":"mongodb-auth.d.ts","sourceRoot":"","sources":["../../src/config/mongodb-auth.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;;;;;;;GAmBG;AAQH;;;GAGG;AACH,wBAAgB,aAAa,IAAI,MAAM,CA2BtC;AAiBD;;;;;;GAMG;AACH,wBAAsB,cAAc,IAAI,OAAO,CAAC,IAAI,CAAC,CA6CpD;AAED;;GAEG;AACH,wBAAsB,iBAAiB,IAAI,OAAO,CAAC,IAAI,CAAC,CAOvD;AAED;;GAEG;AACH,wBAAgB,gBAAgB,IAAI,OAAO,CAE1C"}

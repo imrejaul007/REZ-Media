@@ -1,0 +1,3 @@
+{
+  "/api/cron/freshness/route": "app/api/cron/freshness/route.js"
+}

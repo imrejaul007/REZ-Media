@@ -1,0 +1,3 @@
+{
+  "/api/cron/stale-bookings/route": "app/api/cron/stale-bookings/route.js"
+}

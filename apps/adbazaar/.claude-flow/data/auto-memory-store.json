@@ -1,0 +1,354 @@
+[
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [project_overview.md](project_overview.md) — Hotel OTA platform overview, tech stack, current build state",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-Hotel-OTA/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471706
+  },
+  {
+    "id": "mem-project_overview----",
+    "key": "-",
+    "content": "name: Hotel OTA Platform - Project Overview\ndescription: Decentralised hotel-owned OTA with dual coin rewards, ReZ integration, ownership mining. Phase 1 MVP built.\ntype: project\n---\n\nHotel OTA platform - decentralised hotel-owned Online Travel Agency.\n\n**Why:** Building a hotel booking platform where hotels earn equity over time via performance. Dual coin system (OTA Coin + ReZ Coin). Bangalore launch with 30 hotels.\n\n**How to apply:** All specs are in 6 MD files (01-06) at project root. Follow",
+    "summary": "---",
+    "namespace": "project_overview",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-Hotel-OTA/memory/project_overview.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471707
+  },
+  {
+    "id": "mem-project_overview-tech-stack",
+    "key": "tech-stack",
+    "content": "- Backend: Node.js + Express + PostgreSQL + Prisma + Redis + BullMQ\n- Hotel Panel: Next.js (port 3001)\n- Admin Panel: Next.js (port 3002)\n- Mobile: React Native (Expo)\n- Payments: Razorpay (lazy-init, dev mode returns mocks)",
+    "summary": "Tech Stack",
+    "namespace": "project_overview",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-Hotel-OTA/memory/project_overview.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471707
+  },
+  {
+    "id": "mem-project_overview-current-state--phase-1-built-",
+    "key": "current-state-phase-1-built-",
+    "content": "- API: 30+ endpoints, all Phase 1 services, zero TS errors\n- Database: 16 Prisma models, seeded with 4 hotels + earn/burn rules + admin user\n- PostgreSQL via Postgres.app, Redis via Homebrew\n- Admin login: admin@ota.com / admin123\n- Hotel staff OTP: check console in dev mode",
+    "summary": "Current State (Phase 1 built)",
+    "namespace": "project_overview",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-Hotel-OTA/memory/project_overview.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471707
+  },
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [user_founder.md](user_founder.md) — User is REZ founder, strategic thinker, values brutal honesty\n- [project_rez_strategy.md](project_rez_strategy.md) — REZ must become habit layer, not feature app. Key gaps and execution plan reference.\n- [reference_services_urls.md](reference_services_urls.md) — All REZ services, repos, deploy URLs, endpoints, infra, and env vars\n- [project_api_gateway.md](project_api_gateway.md) — API gateway live, search routes to microservice, rollback instructions\n- [pr",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471708
+  },
+  {
+    "id": "mem-project_adbazaar----",
+    "key": "-",
+    "content": "name: AdBazaar Platform\ndescription: India's first closed-loop ad marketplace. Independent web app integrated with REZ ecosystem. GitHub: git@github.com:imrejaul007/adBazaar.git\ntype: project\n---\n\nAdBazaar is a fully independent Next.js web app — a two-sided marketplace for ALL ad inventory (88+ types: billboards, autos, influencers, restaurant TVs, delivery helmets, WiFi pages, etc.)\n\n**GitHub:** git@github.com:imrejaul007/adBazaar.git\n\n**Tech Stack (per business plan):**\n- Frontend: Next.js (R",
+    "summary": "---",
+    "namespace": "project_adbazaar",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471708
+  },
+  {
+    "id": "mem-project_adbazaar_go_live----",
+    "key": "-",
+    "content": "name: AdBazaar Go-Live Checklist\ndescription: Ops tasks to complete before making AdBazaar live — env vars, storage, and integrations\ntype: project\n---",
+    "summary": "---",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-before-going-live-with-adbazaa",
+    "key": "before-going-live-with-adbazaar",
+    "content": "**Why:** These items are NOT in code — they require manual setup in dashboards and env files. Nothing will break in dev without them, but production will fail.\n\n**How to apply:** Do all of these before flipping AdBazaar to production.\n\n---\n\n### 1. Supabase — Create storage bucket\n\nIn Supabase dashboard → Storage → New bucket:\n- Name: `listing-images`\n- Public: ✅ (buyers and visitors need to see listing images)\n\n---\n\n### 2. AdBazaar env vars (set in Vercel or `.env.production`)\n\n```env",
+    "summary": "Before Going Live with AdBazaar",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-supabase",
+    "key": "supabase",
+    "content": "NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...\nSUPABASE_SERVICE_ROLE_KEY=eyJ...",
+    "summary": "Supabase",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-razorpay",
+    "key": "razorpay",
+    "content": "RAZORPAY_KEY_ID=rzp_live_xxx\nRAZORPAY_KEY_SECRET=xxx\nNEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxx",
+    "summary": "Razorpay",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-google-maps",
+    "key": "google-maps",
+    "content": "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIza...",
+    "summary": "Google Maps",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-rez-integration",
+    "key": "rez-integration",
+    "content": "REZ_API_BASE_URL=https://api.rezapp.in\nREZ_INTERNAL_KEY=<same as INTERNAL_SERVICE_TOKEN in rezbackend>\nADBAZAAR_WEBHOOK_SECRET=<generate a random 32-char secret — use the SAME value in rezbackend>",
+    "summary": "REZ integration",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_adbazaar_go_live-app",
+    "key": "app",
+    "content": "NEXT_PUBLIC_APP_URL=https://adbazaar.in\n```\n\n---\n\n### 3. REZ Backend — add 2 new env vars\n\n```env\nADBAZAAR_WEBHOOK_URL=https://adbazaar.in\nADBAZAAR_WEBHOOK_SECRET=<same secret as above>\n```\n\nThese enable the closed-loop attribution: REZ visit/purchase events fire back to AdBazaar.\n\n---\n\n### 4. Google Maps — restrict API key\n\nIn Google Cloud Console:\n- Restrict to: `Maps JavaScript API`\n- HTTP referrer: `https://adbazaar.in/*`\n- Never expose the server-side key in `NEXT_PUBLIC_*`\n\n---\n\n### 5. Raz",
+    "summary": "App",
+    "namespace": "project_adbazaar_go_live",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_adbazaar_go_live.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_ads_architecture----",
+    "key": "-",
+    "content": "name: Ads & Marketing Architecture Plan\ndescription: Two-service ad system architecture — rez-ads-service (in-app) and rez-marketing-service (outbound). Future outside-REZ project to be integrated.\ntype: project\n---\n\nREZ ad system is split into two independent services:\n\n**rez-ads-service** (port 4007, standalone git: imrejaul007/rez-ads-service)\n- In-app visual ads for any REZ ecosystem app\n- Merchant creates → Admin approves → Consumer app serves\n- Will need `appId` field added when sister app",
+    "summary": "---",
+    "namespace": "project_ads_architecture",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_ads_architecture.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471709
+  },
+  {
+    "id": "mem-project_api_gateway----",
+    "key": "-",
+    "content": "name: API Gateway Architecture\ndescription: REZ traffic routes through rez-api-gateway (nginx on Render) — search goes to microservice, rest to monolith\ntype: project\n---\n\nAPI gateway deployed at https://rez-api-gateway.onrender.com (2026-04-03).\n\nConsumer app EXPO_PUBLIC_API_BASE_URL now points at the gateway instead of the monolith directly.\n\n**Why:** Strangler Fig migration — gradually move endpoints from monolith to microservices without changing client code.\n\n**How to apply:**\n- Search/home",
+    "summary": "---",
+    "namespace": "project_api_gateway",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_api_gateway.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-project_rez_strategy----",
+    "key": "-",
+    "content": "name: REZ Product Strategy Direction\ndescription: REZ must become a \"habit layer for local spending\" not a feature super-app. Core loop = visit → save → see reward → level up. Key gaps identified March 2026.\ntype: project\n---\n\nREZ strategic direction is to become \"the default smart savings and loyalty layer for everyday local spending\" — a behavior platform, not a feature app.\n\n**Why:** Business analysis (PDF, March 2026) identified that REZ competes across 8 layers (discovery, cashback, dining,",
+    "summary": "---",
+    "namespace": "project_rez_strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/project_rez_strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls----",
+    "key": "-",
+    "content": "name: REZ Platform — All Repos & Services\ndescription: Complete inventory of all 18 REZ repos, deploy URLs, microservice extraction status, endpoints, infra, and env vars\ntype: reference\n---",
+    "summary": "---",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls-all-rez-repos--18-total-",
+    "key": "all-rez-repos-18-total-",
+    "content": "### Core Apps (5) — In Production\n\n| # | Service | Repo | Production URL | Visibility |\n|---|---------|------|---------------|------------|\n| 1 | **Backend API** | `imrejaul007/rez-backend` | `https://api.rezapp.com/api` | Private |\n| 2 | **Consumer App** | `imrejaul007/rez-app-consumer` (nuqta-master) | Expo/EAS mobile build | Private |\n| 3 | **Merchant App** | `imrejaul007/rez-app-marchant` | Vercel web + Expo native | Private |\n| 4 | **Admin App** | `imrejaul007/rez-app-admin` | Vercel web + ",
+    "summary": "All REZ Repos (18 total)",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls-monolith---microservice-mappin",
+    "key": "monolith-microservice-mapping",
+    "content": "| Monolith File(s) | Extracts To | Repo |\n|-------------------|------------|------|\n| `notificationService.ts`, `emailService.ts` | Notification Service | `rez-notification-events` |\n| `uploadService.ts`, `imageService.ts` | Media Service | `rez-media-events` |\n| `analyticsService.ts`, admin dashboard queries | Analytics Service | `analytics-events` |\n| `gamificationService.ts`, `gamificationQueue.ts` | Gamification Service | `rez-gamification-service` |\n| `routes/merchant/*`, `services/merchant",
+    "summary": "Monolith → Microservice Mapping",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls-key-backend-endpoints",
+    "key": "key-backend-endpoints",
+    "content": "| Endpoint | Purpose |\n|----------|---------|\n| `/health` | Liveness (DB + Redis + payment) |\n| `/health/ready` | Readiness probe |\n| `/metrics` | Prometheus (admin auth) |\n| `/api/auth/*` | Consumer auth (OTP) |\n| `/api/merchant/auth/*` | Merchant auth |\n| `/api/admin/*` | Admin panel APIs |\n| `/api/orders/*` | Order lifecycle |\n| `/api/wallet/*` | Wallet ops |\n| `/api/cashback/*` | Cashback forecast/claim |\n| `/api/qr-checkin/*` | QR check-in |",
+    "summary": "Key Backend Endpoints",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls-infrastructure",
+    "key": "infrastructure",
+    "content": "| Component | Details |\n|-----------|---------|\n| **Database** | MongoDB (shared single cluster) |\n| **Cache/Queue** | Redis + BullMQ (`gamification-events`, notifications) |\n| **Payments** | Razorpay |\n| **Monitoring** | Sentry (all apps) |\n| **CDN/Hosting** | Vercel (web), EAS (native) |\n| **Service Auth** | `X-Internal-Token` header |\n| **Trace** | `X-Correlation-ID` / `X-Request-ID` via nginx |",
+    "summary": "Infrastructure",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-reference_services_urls-environment-variables--critica",
+    "key": "environment-variables-critical-",
+    "content": "| Var | Where | Purpose |\n|-----|-------|---------|\n| `INTERNAL_SERVICE_TOKEN` | Backend + docker-compose | Service-to-service auth |\n| `PUBLIC_URL` | Backend | Invoice/shipping label links |\n| `MERCHANT_FRONTEND_URL` | Backend | Merchant email links |\n| `MARKETING_SERVICE_URL` | Backend | Marketing service endpoint |\n| `EXPO_PUBLIC_SENTRY_DSN` | All apps | Error tracking |\n| `EXPO_PUBLIC_API_BASE_URL` | Consumer/Merchant/Admin | Backend API URL |\n| `EXPO_PUBLIC_RAZORPAY_KEY_ID` | Merchant app |",
+    "summary": "Environment Variables (critical)",
+    "namespace": "reference_services_urls",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/reference_services_urls.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471710
+  },
+  {
+    "id": "mem-user_founder----",
+    "key": "-",
+    "content": "name: User is REZ founder/product owner\ndescription: User is founder of REZ, a multi-layer hyperlocal commerce platform (India-first). Thinks deeply about product strategy, competitive positioning, and user psychology.\ntype: user\n---\n\nThe user is the founder/product owner of REZ, a hyperlocal commerce platform. They think at the strategic product level — asking questions like \"what problem are we really solving?\" and \"why will users switch?\" They value brutal honesty over motivation, and want ac",
+    "summary": "---",
+    "namespace": "user_founder",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App/memory/user_founder.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471711
+  },
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [ReZ Consumer App (nuqta-master)](project_rezapp.md) — Core project context: super-app, Expo Router + Zustand + React Context dual-layer, known bugs, 150+ services, 30+ stores",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App-rezapp/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471711
+  },
+  {
+    "id": "mem-project_rezapp----",
+    "key": "-",
+    "content": "name: ReZ Consumer App (nuqta-master)\ndescription: Core project context — purpose, stack, architecture, known bugs\ntype: project\n---",
+    "summary": "---",
+    "namespace": "project_rezapp",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App-rezapp/memory/project_rezapp.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471712
+  },
+  {
+    "id": "mem-project_rezapp-rez-consumer-app--nuqta-master",
+    "key": "rez-consumer-app-nuqta-master-",
+    "content": "**What it is:** REZ Consumer super-app (codename \"Nuqta\") — React Native/Expo lifestyle & commerce platform targeting India/Middle East. Features: shopping, dining, travel (flight/hotel/train/bus/cab), financial tools (wallet, bill payment, recharge, gold savings, insurance, khata), gamification (coin system, scratch cards, minigames), social/UGC content, loyalty/subscription programs, booking/appointments.\n\n**Location:** `/Users/rejaulkarim/Documents/ReZ Full App/rezapp/nuqta-master`\n\n**Tech st",
+    "summary": "ReZ Consumer App (nuqta-master)",
+    "namespace": "project_rezapp",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/rejaulkarim/.claude/projects/-Users-rejaulkarim-Documents-ReZ-Full-App-rezapp/memory/project_rezapp.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1775480471712
+  },
+  {
+    "id": "insight-1775606578235-2qye",
+    "key": "frequent-edit-unknown",
+    "content": "File unknown was edited 52 times this session — likely a hot path worth monitoring.",
+    "summary": "Frequently edited: unknown (52x)",
+    "namespace": "insights",
+    "type": "procedural",
+    "metadata": {
+      "sourceFile": "unknown",
+      "editCount": 52,
+      "autoGenerated": true
+    },
+    "createdAt": 1775606578235
+  }
+]

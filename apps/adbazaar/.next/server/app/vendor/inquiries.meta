@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(vendor)/layout,_N_T_/(vendor)/vendor/layout,_N_T_/(vendor)/vendor/inquiries/layout,_N_T_/(vendor)/vendor/inquiries/page,_N_T_/vendor/inquiries"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHZlbmRvcik/vendor/inquiries/__PAGE__",
+    "/!KHZlbmRvcik/vendor/inquiries",
+    "/!KHZlbmRvcik/vendor",
+    "/!KHZlbmRvcik",
+    "/_index",
+    "/_head"
+  ]
+}

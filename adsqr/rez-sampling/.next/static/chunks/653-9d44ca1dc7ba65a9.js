@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[653],{4653:function(e,t,n){n.d(t,{vF:function(){return r}}),n(7665).env.NEXT_PUBLIC_AUTH_SERVICE_URL;function r(){{let e=localStorage.getItem("adsqr_user");if(e)try{return JSON.parse(e)}catch(e){}}return null}}}]);

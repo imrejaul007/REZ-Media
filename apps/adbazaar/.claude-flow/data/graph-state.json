@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "updatedAt": 1775606710088,
+  "nodeCount": 25,
+  "nodes": {
+    "mem-MEMORY-memory-index": {
+      "id": "mem-MEMORY-memory-index",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471711
+    },
+    "mem-project_overview----": {
+      "id": "mem-project_overview----",
+      "category": "project_overview",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471707
+    },
+    "mem-project_overview-tech-stack": {
+      "id": "mem-project_overview-tech-stack",
+      "category": "project_overview",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471707
+    },
+    "mem-project_overview-current-state--phase-1-built-": {
+      "id": "mem-project_overview-current-state--phase-1-built-",
+      "category": "project_overview",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471707
+    },
+    "mem-project_adbazaar----": {
+      "id": "mem-project_adbazaar----",
+      "category": "project_adbazaar",
+      "confidence": 0.6000000000000001,
+      "accessCount": 2,
+      "createdAt": 1775480471708
+    },
+    "mem-project_adbazaar_go_live----": {
+      "id": "mem-project_adbazaar_go_live----",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-before-going-live-with-adbazaa": {
+      "id": "mem-project_adbazaar_go_live-before-going-live-with-adbazaa",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-supabase": {
+      "id": "mem-project_adbazaar_go_live-supabase",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-razorpay": {
+      "id": "mem-project_adbazaar_go_live-razorpay",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-google-maps": {
+      "id": "mem-project_adbazaar_go_live-google-maps",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-rez-integration": {
+      "id": "mem-project_adbazaar_go_live-rez-integration",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_adbazaar_go_live-app": {
+      "id": "mem-project_adbazaar_go_live-app",
+      "category": "project_adbazaar_go_live",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471709
+    },
+    "mem-project_ads_architecture----": {
+      "id": "mem-project_ads_architecture----",
+      "category": "project_ads_architecture",
+      "confidence": 0.6000000000000001,
+      "accessCount": 2,
+      "createdAt": 1775480471709
+    },
+    "mem-project_api_gateway----": {
+      "id": "mem-project_api_gateway----",
+      "category": "project_api_gateway",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-project_rez_strategy----": {
+      "id": "mem-project_rez_strategy----",
+      "category": "project_rez_strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls----": {
+      "id": "mem-reference_services_urls----",
+      "category": "reference_services_urls",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls-all-rez-repos--18-total-": {
+      "id": "mem-reference_services_urls-all-rez-repos--18-total-",
+      "category": "reference_services_urls",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls-monolith---microservice-mappin": {
+      "id": "mem-reference_services_urls-monolith---microservice-mappin",
+      "category": "reference_services_urls",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls-key-backend-endpoints": {
+      "id": "mem-reference_services_urls-key-backend-endpoints",
+      "category": "reference_services_urls",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls-infrastructure": {
+      "id": "mem-reference_services_urls-infrastructure",
+      "category": "reference_services_urls",
+      "confidence": 0.6000000000000001,
+      "accessCount": 2,
+      "createdAt": 1775480471710
+    },
+    "mem-reference_services_urls-environment-variables--critica": {
+      "id": "mem-reference_services_urls-environment-variables--critica",
+      "category": "reference_services_urls",
+      "confidence": 0.6000000000000001,
+      "accessCount": 2,
+      "createdAt": 1775480471710
+    },
+    "mem-user_founder----": {
+      "id": "mem-user_founder----",
+      "category": "user_founder",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471711
+    },
+    "mem-project_rezapp----": {
+      "id": "mem-project_rezapp----",
+      "category": "project_rezapp",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775480471712
+    },
+    "mem-project_rezapp-rez-consumer-app--nuqta-master": {
+      "id": "mem-project_rezapp-rez-consumer-app--nuqta-master",
+      "category": "project_rezapp",
+      "confidence": 0.6000000000000001,
+      "accessCount": 2,
+      "createdAt": 1775480471712
+    },
+    "insight-1775606578235-2qye": {
+      "id": "insight-1775606578235-2qye",
+      "category": "insights",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1775606578235
+    }
+  },
+  "edges": [
+    {
+      "sourceId": "mem-project_overview----",
+      "targetId": "mem-project_overview-tech-stack",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_overview-tech-stack",
+      "targetId": "mem-project_overview-current-state--phase-1-built-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live----",
+      "targetId": "mem-project_adbazaar_go_live-before-going-live-with-adbazaa",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live-before-going-live-with-adbazaa",
+      "targetId": "mem-project_adbazaar_go_live-supabase",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live-supabase",
+      "targetId": "mem-project_adbazaar_go_live-razorpay",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live-razorpay",
+      "targetId": "mem-project_adbazaar_go_live-google-maps",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live-google-maps",
+      "targetId": "mem-project_adbazaar_go_live-rez-integration",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_adbazaar_go_live-rez-integration",
+      "targetId": "mem-project_adbazaar_go_live-app",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-reference_services_urls----",
+      "targetId": "mem-reference_services_urls-all-rez-repos--18-total-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-reference_services_urls-all-rez-repos--18-total-",
+      "targetId": "mem-reference_services_urls-monolith---microservice-mappin",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-reference_services_urls-monolith---microservice-mappin",
+      "targetId": "mem-reference_services_urls-key-backend-endpoints",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-reference_services_urls-key-backend-endpoints",
+      "targetId": "mem-reference_services_urls-infrastructure",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-reference_services_urls-infrastructure",
+      "targetId": "mem-reference_services_urls-environment-variables--critica",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_rezapp----",
+      "targetId": "mem-project_rezapp-rez-consumer-app--nuqta-master",
+      "type": "temporal",
+      "weight": 0.5
+    }
+  ],
+  "pageRanks": {
+    "mem-MEMORY-memory-index": 0.018960150008795498,
+    "mem-project_overview----": 0.018960150008795498,
+    "mem-project_overview-tech-stack": 0.03507626905042906,
+    "mem-project_overview-current-state--phase-1-built-": 0.048774975999268375,
+    "mem-project_adbazaar----": 0.018960150008795498,
+    "mem-project_adbazaar_go_live----": 0.018960150008795498,
+    "mem-project_adbazaar_go_live-before-going-live-with-adbazaa": 0.03507626905042906,
+    "mem-project_adbazaar_go_live-supabase": 0.048774975999268375,
+    "mem-project_adbazaar_go_live-razorpay": 0.06041890877633432,
+    "mem-project_adbazaar_go_live-google-maps": 0.07031629409374128,
+    "mem-project_adbazaar_go_live-rez-integration": 0.07872906297344526,
+    "mem-project_adbazaar_go_live-app": 0.08587981401668657,
+    "mem-project_ads_architecture----": 0.018960150008795498,
+    "mem-project_api_gateway----": 0.018960150008795498,
+    "mem-project_rez_strategy----": 0.018960150008795498,
+    "mem-reference_services_urls----": 0.018960150008795498,
+    "mem-reference_services_urls-all-rez-repos--18-total-": 0.03507626905042906,
+    "mem-reference_services_urls-monolith---microservice-mappin": 0.048774975999268375,
+    "mem-reference_services_urls-key-backend-endpoints": 0.06041890877633432,
+    "mem-reference_services_urls-infrastructure": 0.07031629409374128,
+    "mem-reference_services_urls-environment-variables--critica": 0.07872906297344526,
+    "mem-user_founder----": 0.018960150008795498,
+    "mem-project_rezapp----": 0.018960150008795498,
+    "mem-project_rezapp-rez-consumer-app--nuqta-master": 0.03507626905042906,
+    "insight-1775606578235-2qye": 0.018960150008795498
+  }
+}

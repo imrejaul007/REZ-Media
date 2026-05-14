@@ -1,0 +1,12 @@
+var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/bookings/route.js")
+R.c("server/chunks/[root-of-the-server]__02nop~c._.js")
+R.c("server/chunks/0xls_next_dist_esm_build_templates_app-route_11l5x5l.js")
+R.c("server/chunks/adBazaar_0iek5ii._.js")
+R.c("server/chunks/[root-of-the-server]__0jsvk0i._.js")
+R.c("server/chunks/0xls_@supabase_supabase-js_dist_index_mjs_0lahwyj._.js")
+R.c("server/chunks/[root-of-the-server]__0o6jdt7._.js")
+R.c("server/chunks/[root-of-the-server]__0sp2hqv._.js")
+R.c("server/chunks/0xls_zod_v4_classic_external_0cxe3bl.js")
+R.c("server/chunks/adBazaar__next-internal_server_app_api_bookings_route_actions_01a6-ro.js")
+R.m(33231)
+module.exports=R.m(33231).exports

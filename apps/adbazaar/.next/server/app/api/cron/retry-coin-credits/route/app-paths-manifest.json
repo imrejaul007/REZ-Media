@@ -1,0 +1,3 @@
+{
+  "/api/cron/retry-coin-credits/route": "app/api/cron/retry-coin-credits/route.js"
+}

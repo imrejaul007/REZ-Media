@@ -1,0 +1,3 @@
+{
+  "/api/cron/process-coin-credits/route": "app/api/cron/process-coin-credits/route.js"
+}

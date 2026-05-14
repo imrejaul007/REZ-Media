@@ -1,0 +1,3 @@
+module.exports=[26992,a=>{"use strict";var b=a.i(6566);a.s(["default",0,function({children:a}){return(0,b.jsx)(b.Fragment,{children:a})},"metadata",0,{title:"Browse Ad Spaces | AdBazaar — India's Ad Marketplace",description:"Find and book billboard, shop, and digital ad spaces across India. Browse by city, category, and budget."}])},21829,a=>{a.n(a.i(26992))}];
+
+//# sourceMappingURL=adBazaar_src_app_%28marketplace%29_browse_layout_tsx_02hcd7x._.js.map

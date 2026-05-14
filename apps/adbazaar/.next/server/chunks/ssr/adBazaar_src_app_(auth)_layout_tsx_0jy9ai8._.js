@@ -1,0 +1,3 @@
+module.exports=[72818,a=>{"use strict";var b=a.i(6566);a.s(["default",0,function({children:a}){return(0,b.jsx)("div",{className:"min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4",children:(0,b.jsx)("div",{className:"w-full max-w-md",children:(0,b.jsx)("div",{className:"bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 shadow-2xl",children:a})})})}])},539,a=>{a.n(a.i(72818))}];
+
+//# sourceMappingURL=adBazaar_src_app_%28auth%29_layout_tsx_0jy9ai8._.js.map
