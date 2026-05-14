@@ -11,8 +11,8 @@
 
 import { logger } from '../config/logger';
 
-const PRIVÉ_SERVICE_URL = process.env.PRIVÉ_SERVICE_URL || process.env.API_BASE_URL || 'https://rez-backend.onrender.com';
-const WALLET_SERVICE_URL = process.env.WALLET_SERVICE_URL || 'https://rez-wallet-service-36vo.onrender.com';
+const PRIVÉ_SERVICE_URL = process.env.PRIVE_SERVICE_URL || 'https://rez-prive-service.onrender.com';
+const WALLET_SERVICE_URL = process.env.WALLET_SERVICE_URL || 'https://rez-wallet-service.onrender.com';
 
 // Prive tier reward multipliers for campaigns
 export const PRIVE_TIER_CAMPAIGN_BONUS = {
