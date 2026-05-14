@@ -28,8 +28,11 @@ export class CampaignWorker {
   private isRunning: boolean = false;
   private isProcessing: boolean = false;
   private config: WorkerConfig;
-  private currentCalls: Set<string> = new Set();
   private pollInterval: NodeJS.Timeout | null = null;
+
+  // Redis keys for distributed state
+  private readonly REDIS_KEY_CURRENT_CALLS = 'voice:campaign:currentCalls';
+  private readonly REDIS_KEY_PROCESSING_LOCK = 'voice:campaign:processingLock';
 
   constructor(config?: Partial<WorkerConfig>) {
     this.config = {
@@ -39,6 +42,30 @@ export class CampaignWorker {
       retryDelayMs: config?.retryDelayMs || 30000,
       maxRetries: config?.maxRetries || 3
     };
+  }
+
+  /**
+   * Get current calls count from Redis
+   */
+  private async getCurrentCallsCount(): Promise<number> {
+    if (!this.redis) return 0;
+    return await this.redis.sCard(this.REDIS_KEY_CURRENT_CALLS);
+  }
+
+  /**
+   * Add call to current calls set
+   */
+  private async addCurrentCall(callId: string): Promise<void> {
+    if (!this.redis) return;
+    await this.redis.sAdd(this.REDIS_KEY_CURRENT_CALLS, callId);
+  }
+
+  /**
+   * Remove call from current calls set
+   */
+  private async removeCurrentCall(callId: string): Promise<void> {
+    if (!this.redis) return;
+    await this.redis.sRem(this.REDIS_KEY_CURRENT_CALLS, callId);
   }
 
   /**
@@ -139,7 +166,8 @@ export class CampaignWorker {
 
     try {
       // Check if we can process more calls
-      if (this.currentCalls.size >= this.config.maxConcurrentCalls) {
+      const currentCallsCount = await this.getCurrentCallsCount();
+      if (currentCallsCount >= this.config.maxConcurrentCalls) {
         return;
       }
 
@@ -153,7 +181,8 @@ export class CampaignWorker {
 
       for (const call of dueCalls) {
         if (!this.isRunning) break;
-        if (this.currentCalls.size >= this.config.maxConcurrentCalls) break;
+        const callsCount = await this.getCurrentCallsCount();
+        if (callsCount >= this.config.maxConcurrentCalls) break;
 
         try {
           await this.processCall(call);
@@ -173,8 +202,8 @@ export class CampaignWorker {
   private async processCall(call: any): Promise<void> {
     const callId = call._id.toString();
 
-    // Add to current calls set
-    this.currentCalls.add(callId);
+    // Add to current calls set (Redis)
+    await this.addCurrentCall(callId);
 
     try {
       // Check DNC again before calling
