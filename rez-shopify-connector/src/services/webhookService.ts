@@ -1,6 +1,7 @@
 import { verifyWebhookSignature } from '../clients/adminClient';
 import { Store, IStoreDocument } from '../models/Store';
 import { shopifyConfig, logger } from '../config';
+import { codIntelligence } from './codIntelligence';
 import type {
   WebhookTopic,
   ShopifyOrder,
@@ -147,9 +148,44 @@ export class WebhookService {
         'create',
         transformedOrder
       );
+
+      // Process for COD Intelligence
+      const codResult = await codIntelligence.processShopifyOrder(
+        order,
+        store.shopifyDomain
+      );
+
+      if (codResult?.data) {
+        logger.info(`[WebhookService] COD risk for order ${order.id}: ${codResult.data.decision} (score: ${codResult.data.totalScore})`);
+
+        // If high risk, you could:
+        // 1. Hold the order for review
+        // 2. Notify the merchant
+        // 3. Tag the order in Shopify
+        if (codResult.data.decision === 'reject' || codResult.data.decision === 'prepay') {
+          await this.updateOrderRiskTags(order, store, codResult.data);
+        }
+      }
     } catch (error) {
       logger.error(`[WebhookService] Failed to sync order ${order.id}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Update Shopify order with risk tags
+   */
+  private static async updateOrderRiskTags(
+    order: ShopifyOrder,
+    store: IStoreDocument,
+    riskData: any
+  ): Promise<void> {
+    try {
+      // In production, you'd use Shopify Admin API to add tags or metafields
+      // For now, just log it
+      logger.info(`[WebhookService] Order ${order.id} risk: ${JSON.stringify(riskData)}`);
+    } catch (error) {
+      logger.warn(`[WebhookService] Failed to update risk tags:`, error);
     }
   }
 
