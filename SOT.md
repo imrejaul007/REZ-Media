@@ -1,7 +1,7 @@
 # REZ Media - Source of Truth
 
-**Version:** 3.0  
-**Date:** 2026-05-15  
+**Version:** 4.0  
+**Date:** 2026-05-16  
 **Status:** AUTHORITATIVE
 
 ---
@@ -146,6 +146,34 @@ Final CPM = Base CPM
 | Service | Description | Port |
 |---------|-------------|------|
 | `REZ-rfm-service/` | RFM customer analysis | 4055 |
+| `REZ-rfm-marketing-bridge/` | RFM to marketing bridge | 4090 |
+
+---
+
+## AdBazaar Backend Integrations
+
+### Service Integrations
+
+| Integration | Service | Purpose |
+|------------|---------|---------|
+| DOOH Intelligence | Port 4080 | Dynamic pricing, audience matching |
+| DOOH Attribution | Port 4081 | Touchpoint tracking, ROAS |
+| RABTUL Auth | Port 3000 | User authentication |
+| RABTUL Payment | Port 4001 | Campaign payments, payouts |
+| RABTUL Notifications | Port 4004 | Alerts to users |
+| RABTUL Analytics | Port 4006 | Dashboard metrics |
+| REZ Intelligence | Port 3001 | User targeting |
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/owners/register` | POST | Register screen owner |
+| `/api/owners/:id/screens` | POST | Add screen listing |
+| `/api/advertisers/register` | POST | Register advertiser |
+| `/api/campaigns` | POST | Create campaign |
+| `/api/marketplace/screens` | GET | Search screens |
+| `/api/marketplace/quote` | POST | Get pricing |
 
 ---
 
