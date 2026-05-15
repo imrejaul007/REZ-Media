@@ -158,6 +158,70 @@ app.get('/api/advertisers/:id/billing', async (req, res) => {
   }
 });
 
+// ============================================================================
+// DOOH INTELLIGENCE ENDPOINTS
+// ============================================================================
+
+// Get screen types with pricing
+app.get('/api/dooh/screen-types', async (_req, res) => {
+  try {
+    const screenTypes = await dspService.getScreenTypes();
+    res.json({ success: true, data: screenTypes });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get screen types' });
+  }
+});
+
+// Get demo pricing (all screen types)
+app.get('/api/dooh/pricing/demo', async (_req, res) => {
+  try {
+    const pricing = await dspService.getDemoPricing();
+    res.json({ success: true, data: pricing });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get pricing' });
+  }
+});
+
+// Get dynamic pricing for a screen
+app.post('/api/dooh/pricing/calculate', async (req, res) => {
+  try {
+    const { screenType, city, tier, scheduledTime } = req.body;
+    const pricing = await dspService.getDOOHPricing({
+      screenType,
+      city,
+      tier,
+      scheduledTime,
+    });
+    if (!pricing) {
+      res.status(404).json({ success: false, error: 'Pricing not available' });
+      return;
+    }
+    res.json({ success: true, data: pricing });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to calculate pricing' });
+  }
+});
+
+// Calculate campaign estimate
+app.post('/api/dooh/estimate', async (req, res) => {
+  try {
+    const { screenTypes, cities, budget, objective } = req.body;
+    const estimate = await dspService.calculateCampaignEstimate({
+      screenTypes,
+      cities,
+      budget,
+      objective,
+    });
+    if (!estimate) {
+      res.status(404).json({ success: false, error: 'Cannot calculate estimate' });
+      return;
+    }
+    res.json({ success: true, data: estimate });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to calculate estimate' });
+  }
+});
+
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);

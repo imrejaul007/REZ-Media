@@ -1,6 +1,6 @@
 # REZ Media - Source of Truth
 
-**Version:** 2.0  
+**Version:** 3.0  
 **Date:** 2026-05-15  
 **Status:** AUTHORITATIVE
 
@@ -12,6 +12,66 @@ REZ-Media handles advertising, engagement, and impact economy (Karma) services.
 
 **Git:** `github.com/imrejaul007/REZ-Media`  
 **Local Path:** `REZ-Media/`
+
+---
+
+## AdBazaar Ecosystem (Screen Marketplace)
+
+### Apps
+
+| App | Description | Tech Stack |
+|-----|-------------|------------|
+| `adBazaar/` | Marketplace UI | Next.js (Port 3000) |
+| `adBazaar-creator/` | Creator dashboard | Next.js |
+| `adBazaar-backend/` | Marketplace backend | Node.js (Port 4085) |
+
+### How It Works
+
+```
+Screen Owners → List Screens → Set Floor Prices → Get Paid (70%)
+                     ↓
+                  AdBazaar
+                     ↓
+Advertisers → Browse Screens → Book Campaigns → Track ROI
+```
+
+### Payment Structure
+
+| Party | Share | Description |
+|-------|-------|-------------|
+| Screen Owner | 70% | Monthly payout (15th) |
+| REZ Platform | 30% | Operations + Marketing + R&D |
+
+---
+
+## DOOH Intelligence (REZ-Intelligence/)
+
+### Core Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| `REZ-dooh-intelligence/` | DOOH pricing & targeting | 4080 |
+| `REZ-dooh-attribution/` | DOOH attribution tracking | 4081 |
+
+### Screen Types & Captivity Levels
+
+| Level | Screen Type | Base CPM | Description |
+|-------|-------------|----------|-------------|
+| **L1: Personal** | App Feed, Search | ₹100-250 | Full user profile |
+| **L2: Captive** | Hotel TV, Cab, Flight | ₹150-400 | User stuck + profile |
+| **L3: Context** | Mall, Office, Gym | ₹60-150 | Context + some data |
+| **L4: Public** | Billboard, Shelter | ₹10-50 | Context only |
+
+### Dynamic Pricing Formula
+
+```
+Final CPM = Base CPM
+          × City Tier (Metro 2.5x, Tier1 2.0x)
+          × Time (Peak 2.0x, Business 1.5x)
+          × Seasonal (Festival 2.5x)
+          × Captivity (L2 1.5x, L3 1.2x)
+          × Demand (0.5-3.0x)
+```
 
 ---
 
@@ -45,10 +105,13 @@ REZ-Media handles advertising, engagement, and impact economy (Karma) services.
 | `REZ-journey-service/` | User journey tracking | 4019 |
 | `REZ-media-events/` | Media event tracking | 4029 |
 | `REZ-pricing-engine/` | Dynamic pricing | 4015 |
+| `REZ-dsp-portal/` | Advertiser self-serve portal | 4064 |
 | `reks-whatsapp-commerce/` | WhatsApp commerce | 4030 |
 | `rez-automation-service/` | Workflow automation | 4028 |
 | `rez-instagram-sales-agent/` | Instagram sales | 4032 |
-| `rez-business-ai/` | Autonomous AI for merchants | 4059 |
+| `REZ-video-ads/` | Video ad serving | 4067 |
+| `adsqr/` | QR code campaigns | 4068 |
+| `reks-ads/` | Reks ad platform | 4069 |
 
 ### REZ Business AI Services
 
@@ -58,48 +121,136 @@ REZ-Media handles advertising, engagement, and impact economy (Karma) services.
 
 ### E-Commerce Connectors
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `rez-shopify-connector/` | 4050 | Shopify OAuth, webhooks, sync |
-| `rez-woocommerce-connector/` | 4051 | WooCommerce REST API, webhooks, sync |
+| Service | Description | Port |
+|---------|-------------|------|
+| `rez-shopify-connector/` | Shopify sync | 4050 |
+| `rez-woocommerce-connector/` | WooCommerce sync | 4051 |
 
 ### AI Marketing
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `REZ-prompt-workflow-ai/` | 4054 | Natural language → workflow |
-| `REZ-crm-hub/` | 4056 | HubSpot + Zoho CRM |
-| `REZ-support-tools-hub/` | 4057 | Zendesk + Freshdesk + Intercom |
+| Service | Description | Port |
+|---------|-------------|------|
+| `REZ-prompt-workflow-ai/` | Natural language workflows | 4054 |
+| `REZ-crm-hub/` | HubSpot + Zoho CRM | 4056 |
+| `REZ-support-tools-hub/` | Zendesk + Freshdesk | 4057 |
+| `REZ-research-opportunity-agent/` | Business analysis | 4058 |
 
 ### Voice & Commerce
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `rez-voice-cart-recovery/` | 4053 | AI voice calls, cart recovery |
+| Service | Description | Port |
+|---------|-------------|------|
+| `rez-voice-cart-recovery/` | AI voice calls | 4053 |
+
+### Segmentation
+
+| Service | Description | Port |
+|---------|-------------|------|
+| `REZ-rfm-service/` | RFM customer analysis | 4055 |
 
 ---
 
-## Integrations
+## Integration Points
 
-### RABTUL Services
+### RABTUL-Technologies (Shared Services)
 
-| Service | Status | Usage |
-|---------|--------|-------|
-| Payment | ✅ | `razorpay.ts`, `razorpayService.ts` |
-| Notifications | ✅ | `notification.service.ts` |
-| Auth | ✅ | JWT authentication |
+| Service | Purpose |
+|---------|---------|
+| `rez-auth-service/` | Auth/SSO |
+| `rez-payment-service/` | Payment gateway |
+| `rez-wallet-service/` | Wallet/Coins |
+| `rez-notifications-service/` | Push/SMS/Email |
+| `rez-analytics-service/` | Analytics |
+
+### REZ-Intelligence (AI/ML)
+
+| Service | Purpose |
+|---------|---------|
+| `REZ-intent-graph/` | User intent tracking |
+| `REZ-identity-graph/` | Unified identity |
+| `REZ-rfm-service/` | Customer segmentation |
+| `REZ-personalization-engine/` | Recommendations |
 
 ---
 
-## Quick Links
+## Port Allocation
 
-| Document | Location |
-|----------|----------|
-| **Master SOT** | `RABTUL-Technologies/SOT.md` |
-| RAP (Services) | `RABTUL-Technologies/RAP.md` |
-| Governance | `RABTUL-Technologies/SERVICE-GOVERNANCE.md` |
-| Architecture | `ARCHITECTURE.md` |
+| Range | Services |
+|-------|----------|
+| 3000-3099 | Frontend Apps |
+| 4000-4049 | Core Services |
+| 4050-4059 | Connectors & AI |
+| 4060-4069 | Ad Platform |
+| 4070-4079 | Marketing |
+| 4080-4089 | DOOH Intelligence |
 
 ---
 
-**Last Updated:** May 15, 2026
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│  adBazaar/          │ adBazaar-creator/    │ DSP Portal/        │
+│  dooh-screen-app/    │ dooh-mobile/         │ karma/              │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      ADBAZAAR BACKEND                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  adBazaar-backend │ REZ-dsp-portal │ REZ-ads-service │ rez-dooh-service │
+│  (Port 4085)     │ (Port 4064)     │                │ (Port 4018)       │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    INTELLIGENCE LAYER                              │
+├─────────────────────────────────────────────────────────────────────┤
+│  REZ-dooh-intelligence (4080) │ REZ-dooh-attribution (4081)      │
+│  • Dynamic pricing            │ • Touchpoint tracking             │
+│  • Audience matching         │ • Attribution models             │
+│  • Captivity scoring        │ • ROAS calculation              │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    RABTUL INFRASTRUCTURE                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  rez-auth-service │ rez-payment-service │ rez-wallet-service        │
+│  rez-notifications-service │ rez-analytics-service              │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Key Metrics
+
+| Metric | Target |
+|--------|--------|
+| Fill Rate | >80% |
+| Viewability | >65% |
+| Attribution Rate | >25% |
+| ROAS | >2.0 |
+| Payment Processing | 100% |
+
+---
+
+## Changelog
+
+### v3.0 (2026-05-15)
+- Added AdBazaar ecosystem
+- Added DOOH Intelligence services
+- Added Payment integration
+- Updated architecture diagrams
+
+### v2.0 (Earlier)
+- Major platform overhaul
+
+### v1.0
+- Initial documentation
+
+---
+
+**Document Owner:** Platform Team  
+**Last Review:** May 15, 2026

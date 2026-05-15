@@ -1,9 +1,34 @@
 /**
  * REZ DSP Portal - DSP Portal Service
- * Self-serve advertising platform
+ * Self-serve advertising platform with DOOH Intelligence integration
  */
 
+import axios from 'axios';
 import { DSPAdvertiser, DSPCampaign, DSPargeting, DSpotCreative, DSPMetrics } from '../types';
+
+// DOOH Intelligence Integration
+const DOOH_INTEL_URL = process.env.DOOH_INTEL_URL || 'http://localhost:4080';
+
+// Types for DOOH Intelligence
+interface DOOHPricingQuote {
+  finalCPM: number;
+  baseCPM: number;
+  adjustments: {
+    captivity: number;
+    cityTier: number;
+    timeSlot: number;
+    seasonal: number;
+    demand: number;
+    audienceMatch: number;
+  };
+}
+
+interface ScreenTypeInfo {
+  type: string;
+  captivityLevel: string;
+  description: string;
+  baseCPM: number;
+}
 
 export class DSPPortalService {
   /**
@@ -197,6 +222,128 @@ export class DSPPortalService {
         { id: 'inv-2', amount: 2000, date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       ],
     };
+  }
+}
+
+  // ============================================================================
+  // DOOH INTELLIGENCE METHODS
+  // ============================================================================
+
+  /**
+   * Get dynamic pricing from DOOH Intelligence
+   */
+  async getDOOHPricing(params: {
+    screenType: string;
+    city: string;
+    tier: 'metro' | 'tier1' | 'tier2' | 'tier3';
+    scheduledTime?: { start: Date; end: Date };
+  }): Promise<DOOHPricingQuote | null> {
+    try {
+      const response = await axios.post(
+        `${DOOH_INTEL_URL}/api/pricing/calculate`,
+        {
+          screenType: params.screenType,
+          location: {
+            city: params.city,
+            tier: params.tier,
+          },
+          scheduledTime: params.scheduledTime || {
+            start: new Date(),
+            end: new Date(),
+          },
+          campaignObjective: 'awareness',
+        },
+        { timeout: 5000 }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to get DOOH pricing:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get available screen types with pricing
+   */
+  async getScreenTypes(): Promise<ScreenTypeInfo[] | null> {
+    try {
+      const response = await axios.get(
+        `${DOOH_INTEL_URL}/api/screens/types`,
+        { timeout: 5000 }
+      );
+      return response.data.data.screens;
+    } catch (error) {
+      console.error('Failed to get screen types:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get demo pricing (all screen types)
+   */
+  async getDemoPricing(): Promise<Array<{
+    screenType: string;
+    base: number;
+    metroPeak: number;
+    metroNormal: number;
+    tier2Peak: number;
+  }> | null> {
+    try {
+      const response = await axios.get(
+        `${DOOH_INTEL_URL}/api/demo/pricing`,
+        { timeout: 5000 }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to get demo pricing:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Calculate campaign estimate with intelligence
+   */
+  async calculateCampaignEstimate(params: {
+    screenTypes: string[];
+    cities: string[];
+    budget: number;
+    objective: string;
+  }): Promise<{
+    estimatedImpressions: number;
+    estimatedCPM: number;
+    priceBreakdown: Array<{
+      screenType: string;
+      baseCPM: number;
+      estimatedCPM: number;
+    }>;
+  } | null> {
+    try {
+      // Get pricing for first screen type as estimate
+      const screenTypes = await this.getScreenTypes();
+      if (!screenTypes?.length) return null;
+
+      const priceBreakdown = params.screenTypes.map((screenType) => {
+        const info = screenTypes.find((s) => s.type === screenType);
+        return {
+          screenType,
+          baseCPM: info?.baseCPM || 100,
+          estimatedCPM: (info?.baseCPM || 100) * 2.5, // Metro peak estimate
+        };
+      });
+
+      const avgCPM =
+        priceBreakdown.reduce((sum, p) => sum + p.estimatedCPM, 0) /
+        priceBreakdown.length;
+
+      return {
+        estimatedImpressions: Math.round((params.budget / avgCPM) * 1000),
+        estimatedCPM: avgCPM,
+        priceBreakdown,
+      };
+    } catch (error) {
+      console.error('Failed to calculate estimate:', error);
+      return null;
+    }
   }
 }
 
