@@ -1,0 +1,333 @@
+// @ts-nocheck
+import 'dotenv/config';
+
+process.env.SERVICE_NAME = 'rez-karma-service';
+
+import * as Sentry from '@sentry/node';
+import { expressIntegration, setupExpressErrorHandler } from '@sentry/node';
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [expressIntegration()],
+  environment: process.env.NODE_ENV || 'development',
+});
+
+import express from 'express';
+import client from 'prom-client';
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import { openApiSpec } from './@rez/shared/api-docs';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
+import mongoSanitize from 'express-mongo-sanitize';
+import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import { logger } from './config/logger';
+import { connectMongoDB } from './config/mongodb';
+import { redis } from './config/redis';
+import { port, corsOrigin, rateLimitWindowMs, rateLimitMax } from './config';
+import routes from './routes';
+import karmaRoutes from './routes/karmaRoutes';
+import karmaScoreRoutes from './routes/karmaScoreRoutes';
+import verifyRoutes from './routes/verifyRoutes';
+import batchRoutes from './routes/batchRoutes';
+import eventRoutes from './routes/eventRoutes';
+import walletRoutes from './routes/walletRoutes';
+import bookingRoutes from './routes/bookingRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import civicRoutes from './routes/civicRoutes';
+import perkRoutes from './routes/perkRoutes';
+import { startCoinEventSubscriber, stopCoinEventSubscriber } from './workers/coinEventSubscriber';
+import { closeGamificationBridge } from './utils/gamificationBridge.js';
+import { initScoreRankWorker } from './workers/scoreRankWorker';
+import { startDecayWorker } from './workers/decayWorker';
+import { seedCommunities } from './config/communitySeed.js';
+
+const app = express();
+// Behind Render LB + CF — trust N hops so per-IP rate limiters key on real client IP.
+// See MASTER-PLAN-2026-04-19 P1 (trust proxy fleet-wide).
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 1) || 1;
+if (proxyHops < 0 || proxyHops > 10) {
+  logger.warn('[CONFIG] TRUST_PROXY_HOPS outside safe range (0-10), capping to 10');
+}
+app.set('trust proxy', Math.min(Math.max(proxyHops, 0), 10));
+
+// W3C traceparent propagation
+app.use((req, _res, next) => {
+  const traceparent = req.headers['traceparent'] as string | undefined;
+  if (traceparent) {
+    (req as any).traceparent = traceparent;
+  }
+  next();
+});
+
+// Core middleware
+app.use(helmet());
+app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(mongoSanitize());
+
+// Rate limiting — global per-IP limit using Redis store.
+// RATE-LIMIT-BYPASS FIX (2026-04-17): Always mount rate limiter.
+// When Redis is unavailable, express-rate-limit falls back to its built-in
+// in-memory store automatically instead of silently bypassing rate limiting.
+app.use(
+  rateLimit({
+    windowMs: rateLimitWindowMs,
+    max: rateLimitMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: new RedisStore({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sendCommand: async (...args: string[]): Promise<any> => {
+        return redis.call(...(args as [string, ...string[]]));
+      },
+    }),
+    message: { success: false, message: 'Too many requests, please try again later' },
+  }),
+);
+
+// ── Health Endpoints ───────────────────────────────────────────────────────────
+
+// Liveness
+app.get('/health/live', (_req, res) => {
+  res.status(200).json({ status: 'alive', timestamp: new Date().toISOString() });
+});
+
+// Readiness
+app.get('/health/ready', async (_req, res) => {
+  const checks: Record<string, string> = {};
+  let ready = true;
+
+  try {
+    if (mongoose.connection.readyState !== 1) throw new Error('not connected');
+    await mongoose.connection.db?.admin().ping();
+    checks.mongodb = 'ok';
+  } catch (err: unknown) {
+    checks.mongodb = `error: ${err instanceof Error ? err.message : String(err)}`;
+    ready = false;
+  }
+
+  try {
+    await redis.ping();
+    checks.redis = 'ok';
+  } catch (err: unknown) {
+    checks.redis = `degraded: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'ready' : 'degraded',
+    checks,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Main health endpoint
+app.get('/health', async (_req, res) => {
+  const errors: string[] = [];
+
+  if (mongoose.connection.readyState !== 1) {
+    errors.push('MongoDB not connected');
+  }
+
+  const status = errors.length > 0 ? 'degraded' : 'ok';
+  res.status(errors.length > 0 ? 503 : 200).json({
+    status,
+    service: 'rez-karma-service',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
+
+// GET /health/detailed — Comprehensive health check with latency metrics
+app.get('/health/detailed', async (_req, res) => {
+  const checks: Record<string, any> = {};
+  let isHealthy = true;
+
+  // Check MongoDB with latency
+  const mongoStart = Date.now();
+  try {
+    if (mongoose.connection.readyState !== 1) throw new Error('not connected');
+    await mongoose.connection.db?.admin().ping();
+    checks.database = { status: 'up', latencyMs: Date.now() - mongoStart };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    checks.database = { status: 'down', error: msg, latencyMs: Date.now() - mongoStart };
+    isHealthy = false;
+  }
+
+  // Check Redis with latency
+  const redisStart = Date.now();
+  try {
+    await redis.ping();
+    checks.redis = { status: 'up', latencyMs: Date.now() - redisStart };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    checks.redis = { status: 'down', error: msg, latencyMs: Date.now() - redisStart };
+  }
+
+  const overallStatus = isHealthy ? 'healthy' : 'unhealthy';
+  res.status(overallStatus === 'healthy' ? 200 : 503).json({
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    version: process.env.SERVICE_VERSION || '1.0.0',
+    uptime: process.uptime(),
+    checks,
+  });
+});
+
+// ── Prometheus Metrics ─────────────────────────────────────────────────────────
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+// ── OpenAPI Documentation ──────────────────────────────────────────────────────
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
+app.get('/api-docs.json', (_req, res) => {
+  res.json(openApiSpec);
+});
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+app.use('/', routes);
+app.use('/api/karma', karmaRoutes);
+app.use('/api/karma/score', karmaScoreRoutes);
+app.use('/api/karma/verify', verifyRoutes);
+app.use('/api/karma/batch', batchRoutes);
+app.use('/api/karma', eventRoutes);
+app.use('/api/karma', walletRoutes);
+app.use('/api/karma', bookingRoutes);
+app.use('/api/karma', notificationRoutes);
+app.use('/api/karma/civic-corps', civicRoutes);
+app.use('/api/karma', perkRoutes);
+
+// ── Global Error Handler ─────────────────────────────────────────────────────
+
+setupExpressErrorHandler(app);
+
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  Sentry.captureException(err);
+  const message = 'Internal server error';
+  logger.error('Unhandled error', { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined });
+  res.status(500).json({ success: false, message });
+});
+
+// ── Startup ──────────────────────────────────────────────────────────────────
+
+let isShuttingDown = false;
+
+async function start() {
+  // Validate required env vars
+  const required = ['MONGODB_URI', 'REDIS_URL'];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    logger.error(`[FATAL] Missing required env vars: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  // HIGH-7 FIX: Fail fast if internal service token is missing — all wallet operations
+  // would silently fail at runtime without this, so validate at startup.
+  const internalToken = process.env.INTERNAL_SERVICE_KEY || process.env.INTERNAL_SERVICE_TOKEN;
+  if (!internalToken) {
+    logger.error('[FATAL] INTERNAL_SERVICE_KEY / INTERNAL_SERVICE_TOKEN is not configured');
+    process.exit(1);
+  }
+
+  await connectMongoDB();
+
+  // Seed default Cause Communities (idempotent — safe on every startup)
+  await seedCommunities();
+
+  // XS-CRIT-007 FIX: Start the coin event subscriber so the karma service can
+  // react to coin credit events from the wallet service and other services.
+  await startCoinEventSubscriber();
+
+  // Start background cron workers
+  startDecayWorker();
+  initScoreRankWorker();
+
+  const server = app.listen(port, '0.0.0.0', () => {
+    logger.info(`[rez-karma-service] HTTP API listening on port ${port}`);
+  });
+
+  // G-KS-L3 FIX: Stop all workers on graceful shutdown.
+  // Import workers lazily to avoid circular dependencies.
+  const { stopDecayWorker } = await import('./workers/decayWorker.js');
+  const { stopBatchScheduler } = await import('./workers/batchScheduler.js');
+  const { stopAutoCheckoutWorker } = await import('./workers/autoCheckoutWorker.js');
+
+  const shutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    logger.info(`[SHUTDOWN] ${signal} received — graceful shutdown starting`);
+
+    server.close(() => {
+      logger.info('[SHUTDOWN] HTTP server closed');
+    });
+
+    // G-KS-L3 FIX: Stop all cron workers before closing database connections.
+    stopDecayWorker();
+    stopBatchScheduler();
+    stopAutoCheckoutWorker();
+    logger.info('[SHUTDOWN] All workers stopped');
+
+    try {
+      await mongoose.disconnect();
+      logger.info('[SHUTDOWN] MongoDB disconnected');
+
+      const { bullmqRedis, markRedisShutdownInitiated } = await import('./config/redis');
+      markRedisShutdownInitiated();
+
+      // XS-CRIT-007 FIX: Stop coin event subscriber before closing Redis connections
+      try {
+        await stopCoinEventSubscriber();
+      } catch (e) {
+        logger.warn('[SHUTDOWN] Error stopping coin event subscriber', { error: e instanceof Error ? e.message : String(e) });
+      }
+
+      // HIGH-SEV FIX: Close BullMQ gamification queue before Redis connections
+      try {
+        await closeGamificationBridge();
+        logger.info('[SHUTDOWN] Gamification bridge closed');
+      } catch (e) {
+        logger.error('[SHUTDOWN] Error closing gamification bridge', { error: e });
+      }
+
+      try {
+        await redis.quit();
+      } catch (e) {
+        logger.warn('[SHUTDOWN] Error closing main Redis connection', { error: e instanceof Error ? e.message : String(e) });
+      }
+      try {
+        await bullmqRedis.quit();
+      } catch (e) {
+        logger.warn('[SHUTDOWN] Error closing BullMQ Redis connection', { error: e instanceof Error ? e.message : String(e) });
+      }
+      logger.info('[SHUTDOWN] Redis connections closed');
+
+      logger.info('[SHUTDOWN] Graceful shutdown complete');
+      process.exit(0);
+    } catch (err) {
+      logger.error('[SHUTDOWN] Error during shutdown', err);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('unhandledRejection', (reason: unknown) => {
+    logger.error('Unhandled promise rejection', {
+      reason: reason instanceof Error ? reason.message : String(reason),
+    });
+  });
+}
+
+start().catch((err) => {
+  logger.error('[FATAL] Failed to start:', err);
+  process.exit(1);
+});
+
+export default app;

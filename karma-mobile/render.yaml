@@ -1,0 +1,14 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Note: rez-karma-mobile is an Expo/React Native mobile app
+# This service is deployed via EAS (Expo Application Services), not Render.
+# See eas.json for EAS Build configuration.
+# Repo: https://github.com/imrejaul007/rez-karma-mobile
+
+# Mobile app configuration (builds handled by EAS):
+#   eas build --platform ios --profile production
+#   eas build --platform android --profile production
+#
+# For OTA updates via EAS Update:
+#   eas update --branch production --message "Update description"
+
+services: []

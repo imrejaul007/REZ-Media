@@ -1,0 +1,44 @@
+# render.yaml — Karma by ReZ Service Blueprint
+# Deploy: render blueprint create (CLI) or push to GitHub + link on Render dashboard
+#
+# REQUIRED — set in Render dashboard > Service > Environment (not in this file):
+#   MONGODB_URI              — karma MongoDB Atlas cluster
+#   JWT_SECRET               — shared with other ReZ services (min 32 chars)
+#   INTERNAL_SERVICE_TOKEN   — shared across all services (min 16 chars)
+#   FCM_SERVER_KEY           — Firebase Cloud Messaging (optional for push)
+
+services:
+  - type: web
+    name: rez-karma-service
+    env: node
+    region: singapore
+    plan: free
+    nodeVersion: '20'
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health/live
+    healthCheckInterval: 30
+    healthCheckThreshold: 3
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '3009'
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: REDIS_URL
+        sync: false
+      - key: AUTH_SERVICE_URL
+        sync: false
+      - key: WALLET_SERVICE_URL
+        sync: false
+      - key: MERCHANT_SERVICE_URL
+        sync: false
+      - key: BATCH_CRON_SCHEDULE
+        value: '59 23 * * 0'
+      - key: CORS_ORIGIN
+        value: 'https://rez.money,https://app.rez.money'
+      - key: RATE_LIMIT_WINDOW_MS
+        value: '900000'
+      - key: RATE_LIMIT_MAX
+        value: '100'

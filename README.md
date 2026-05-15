@@ -2,11 +2,19 @@
 
 ## Company Description
 
-REZ-Media is a comprehensive digital marketing platform specializing in **Ads** and **Loyalty** solutions. We empower businesses to reach their target audiences through innovative advertising technology while building lasting customer relationships through gamified loyalty programs and intelligent marketing automation.
+REZ-Media is a comprehensive digital marketing platform specializing in **Ads**, **Loyalty**, and **Impact Economy (Karma)** solutions. We empower businesses to reach their target audiences through innovative advertising technology while building lasting customer relationships through gamified loyalty programs, intelligent marketing automation, and community-driven impact initiatives.
 
 ## Services
 
-Our platform offers a complete suite of marketing and advertising solutions:
+Our platform offers a complete suite of marketing, advertising, and engagement solutions:
+
+### Impact Economy - Karma
+
+| Service | Description |
+|---------|-------------|
+| **karma** | Karma web dashboard - community-driven impact platform |
+| **karma-mobile** | Karma mobile app - earn karma points for helping others |
+| **karma-service** | Karma backend - impact economy platform |
 
 ### Advertising Solutions
 
@@ -25,6 +33,7 @@ Our platform offers a complete suite of marketing and advertising solutions:
 | Service | Description |
 |---------|-------------|
 | **Gamification** | Engagement-driven loyalty mechanics with points, badges, and challenges |
+| **Karma** | Community impact rewards - earn points for helping others |
 
 ### Marketing Automation
 
