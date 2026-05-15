@@ -8,3 +8,4 @@ export { requestIdMiddleware, requestLoggerMiddleware } from './middleware/reque
 export { validateBody, validateQuery, validateParams } from './middleware/validation.js';
 export { createSuccessResponse, createErrorResponse } from './utils/response.js';
 export { AppError } from './utils/errors.js';
+export { logger, createServiceLogger } from './utils/logger.js';

@@ -1,7 +1,7 @@
 {
-  "name": "rez-video-ads",
+  "name": "rez-referral-graph",
   "version": "1.0.0",
-  "description": "Video ad serving with VAST/VPAID support and rewarded playback",
+  "description": "Referral network graph and analysis",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node src/index.ts",

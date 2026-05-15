@@ -1,14 +1,18 @@
 {
-  "name": "@rez/partner-sdk",
+  "name": "@rez/oem-sdk",
   "version": "1.0.0",
-  "description": "Partner SDK for affiliate and referral programs",
+  "description": "OEM SDK for device manufacturers and telco partnerships",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint src/**/*.ts"
   },
+  "keywords": ["oem", "telco", "sdk", "advertising", "rez"],
+  "author": "REZ Media",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",
     "zod": "^3.22.4"
