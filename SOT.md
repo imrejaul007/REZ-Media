@@ -48,6 +48,7 @@ REZ-Media handles advertising, engagement, and impact economy (Karma) services.
 | `reks-whatsapp-commerce/` | WhatsApp commerce | 4030 |
 | `rez-automation-service/` | Workflow automation | 4028 |
 | `rez-instagram-sales-agent/` | Instagram sales | 4032 |
+| `rez-business-ai/` | Autonomous AI for merchants | 4059 |
 
 ### E-Commerce Connectors
 
