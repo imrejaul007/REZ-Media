@@ -1,1 +1,42 @@
+# Dependencies
 node_modules/
+
+# Environment files - NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+secrets.json

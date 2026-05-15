@@ -10,6 +10,39 @@ import { IConnectedStore, SyncStatus, EntitySyncStatus } from '../types';
 import appConfig from '../config';
 
 // ============================================
+// Encryption Helper - Fail-fast if key missing
+// ============================================
+
+function getEncryptionKey(): string {
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key) {
+    throw new Error(
+      'ENCRYPTION_KEY environment variable is required. ' +
+      'Set it in your .env file: ENCRYPTION_KEY=<your-32-char-secret>'
+    );
+  }
+  if (key.length < 16) {
+    throw new Error('ENCRYPTION_KEY must be at least 16 characters long');
+  }
+  return key;
+}
+
+function encrypt(text: string): string {
+  const key = getEncryptionKey();
+  return crypto.AES.encrypt(text, key).toString();
+}
+
+function decrypt(ciphertext: string): string {
+  const key = getEncryptionKey();
+  const bytes = crypto.AES.decrypt(ciphertext, key);
+  const result = bytes.toString(crypto.enc.Utf8);
+  if (!result) {
+    throw new Error('Decryption failed - invalid ciphertext or wrong ENCRYPTION_KEY');
+  }
+  return result;
+}
+
+// ============================================
 // Schemas
 // ============================================
 
@@ -135,8 +168,7 @@ storeSchema.index({ lastSyncAt: 1 });
 storeSchema.pre('save', function (next) {
   // Encrypt consumer secret before saving
   if (this.isModified('consumerSecret')) {
-    const encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-me';
-    this.consumerSecret = crypto.AES.encrypt(this.consumerSecret, encryptionKey).toString();
+    this.consumerSecret = encrypt(this.consumerSecret);
   }
   next();
 });
@@ -149,9 +181,7 @@ storeSchema.pre('save', function (next) {
  * Get decrypted consumer secret
  */
 storeSchema.methods.getDecryptedSecret = function (): string {
-  const encryptionKey = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-me';
-  const bytes = crypto.AES.decrypt(this.consumerSecret, encryptionKey);
-  return bytes.toString(crypto.enc.Utf8);
+  return decrypt(this.consumerSecret);
 };
 
 /**

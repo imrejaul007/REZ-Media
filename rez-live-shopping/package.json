@@ -1,0 +1,18 @@
+{
+  "name": "rez-live-shopping",
+  "version": "1.0.0",
+  "description": "Live shopping with video streaming, real-time bidding, and checkout integration",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0",
+    "redis": "^5.3.0",
+    "winston": "^3.11.0",
+    "socket.io": "^4.6.0"
+  }
+}
