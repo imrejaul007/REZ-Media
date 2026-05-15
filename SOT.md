@@ -50,6 +50,12 @@ REZ-Media handles advertising, engagement, and impact economy (Karma) services.
 | `rez-instagram-sales-agent/` | Instagram sales | 4032 |
 | `rez-business-ai/` | Autonomous AI for merchants | 4059 |
 
+### REZ Business AI Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| `rez-business-ai/` | Business AI - Main service | 4059 |
+
 ### E-Commerce Connectors
 
 | Service | Port | Description |

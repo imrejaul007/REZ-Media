@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: rez-shopify-connector
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start

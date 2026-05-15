@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: reks-ads
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
