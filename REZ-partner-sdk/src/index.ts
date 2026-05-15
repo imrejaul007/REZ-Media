@@ -1,151 +1,86 @@
 /**
- * REZ Partner SDK
- * Third-party apps join REZ ad network
+ * REZ Partner SDK - Client SDK for partners
+ * Integrate ad capabilities into partner apps
  */
 
-export interface REZPartnerConfig {
-  apiKey: string;
+import axios, { AxiosInstance } from 'axios';
+
+export interface PartnerConfig {
   partnerId: string;
-  environment: 'production' | 'staging';
+  apiKey: string;
+  apiUrl?: string;
 }
 
-export interface AdConfig {
+export interface AdRequest {
   placement: string;
-  type: 'banner' | 'video' | 'native' | 'qr';
-  size?: string;
-}
-
-export interface UserContext {
   userId: string;
-  deviceId: string;
-  location?: { lat: number; lng: number };
-  interests?: string[];
-  demographics?: { ageRange?: string; gender?: string };
+  context?: Record<string, unknown>;
 }
 
-export interface REZAd {
+export interface AdResponse {
   adId: string;
-  title: string;
-  imageUrl: string;
+  creativeUrl: string;
   clickUrl: string;
-  reward?: { coins: number };
+  type: 'banner' | 'video' | 'native';
+}
+
+export interface ImpressionEvent {
+  adId: string;
+  userId: string;
+  timestamp: Date;
 }
 
 export class REZPartnerSDK {
-  private config: REZPartnerConfig;
-  private baseUrl: string;
+  private client: AxiosInstance;
+  private partnerId: string;
 
-  constructor(config: REZPartnerConfig) {
-    this.config = config;
-    this.baseUrl = config.environment === 'production'
-      ? 'https://api.rez.app'
-      : 'https://api.staging.rez.app';
+  constructor(config: PartnerConfig) {
+    this.partnerId = config.partnerId;
+    this.client = axios.create({
+      baseURL: config.apiUrl || 'https://api.rez.money',
+      timeout: 10000,
+      headers: {
+        'X-Partner-Id': config.partnerId,
+        'X-API-Key': config.apiKey,
+      },
+    });
   }
 
-  // Initialize partner app
-  async initialize(): Promise<boolean> {
+  /**
+   * Request an ad for user
+   */
+  async getAd(request: AdRequest): Promise<AdResponse | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/partners/initialize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Partner-Key': this.config.apiKey
-        },
-        body: JSON.stringify({
-          partner_id: this.config.partnerId
-        })
-      });
-      return response.ok;
+      const response = await this.client.post('/api/partners/ad/request', request);
+      return response.data.ad;
     } catch (error) {
-      console.error('REZ SDK init failed:', error);
-      return false;
-    }
-  }
-
-  // Request ad for placement
-  async requestAd(config: AdConfig, context: UserContext): Promise<REZAd | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/ads/request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Partner-Key': this.config.apiKey
-        },
-        body: JSON.stringify({
-          placement: config.placement,
-          type: config.type,
-          size: config.size,
-          user_id: context.userId,
-          device_id: context.deviceId,
-          location: context.location,
-          interests: context.interests,
-          demographics: context.demographics
-        })
-      });
-
-      if (!response.ok) return null;
-
-      const data = await response.json();
-      return data.ad;
-    } catch (error) {
-      console.error('REZ SDK ad request failed:', error);
+      console.error('Failed to get ad:', error);
       return null;
     }
   }
 
-  // Record ad impression
-  async recordImpression(adId: string, userId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/ads/impression`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Partner-Key': this.config.apiKey
-      },
-      body: JSON.stringify({ ad_id: adId, user_id: userId })
+  /**
+   * Track impression
+   */
+  async trackImpression(event: ImpressionEvent): Promise<void> {
+    await this.client.post('/api/partners/events/impression', {
+      ...event,
+      partnerId: this.partnerId,
+      timestamp: new Date(),
     });
   }
 
-  // Record ad click
-  async recordClick(adId: string, userId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/ads/click`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Partner-Key': this.config.apiKey
-      },
-      body: JSON.stringify({ ad_id: adId, user_id: userId })
+  /**
+   * Track click
+   */
+  async trackClick(adId: string, userId: string): Promise<void> {
+    await this.client.post('/api/partners/events/click', {
+      adId,
+      userId,
+      partnerId: this.partnerId,
+      timestamp: new Date(),
     });
-  }
-
-  // Track conversion
-  async trackConversion(adId: string, userId: string, value: number): Promise<void> {
-    await fetch(`${this.baseUrl}/api/ads/conversion`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Partner-Key': this.config.apiKey
-      },
-      body: JSON.stringify({ ad_id: adId, user_id: userId, value })
-    });
-  }
-
-  // Get earnings report
-  async getEarnings(): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/api/partners/earnings`, {
-      headers: { 'X-Partner-Key': this.config.apiKey }
-    });
-    return response.json();
   }
 }
-
-// Usage Example:
-// const sdk = new REZPartnerSDK({
-//   apiKey: 'your-api-key',
-//   partnerId: 'your-partner-id',
-//   environment: 'production'
-// });
-//
-// await sdk.initialize();
-// const ad = await sdk.requestAd({ placement: 'home_screen', type: 'banner' }, { userId: '123', deviceId: '456' });
 
 export default REZPartnerSDK;
