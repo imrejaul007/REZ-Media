@@ -1,127 +1,50 @@
 /**
- * AdBazaar - Audience Builder
- * Build audiences for targeting
+ * Audience Payment Calculator
  */
 
-import { rezIntelligence } from './rezIntelligenceClient';
+export function calculateAudiencePayment(params: {
+  impressions: number;
+  baseCPM: number;
+  cityTier?: number;
+  timeMultiplier?: number;
+  demandMultiplier?: number;
+}): { totalCost: number; cpmEffective: number } {
+  const cityTier = params.cityTier ?? 1;
+  const timeMultiplier = params.timeMultiplier ?? 1;
+  const demandMultiplier = params.demandMultiplier ?? 1;
 
-interface AudienceCriteria {
-  rfmSegments?: string[];
-  interests?: string[];
-  ageGroups?: string[];
-  incomeLevels?: string[];
-  locations?: string[];
+  const effectiveCPM = params.baseCPM * cityTier * timeMultiplier * demandMultiplier;
+  const totalCost = (params.impressions * effectiveCPM) / 1000;
+
+  return {
+    totalCost: Math.round(totalCost * 100) / 100,
+    cpmEffective: Math.round(effectiveCPM * 100) / 100,
+  };
 }
 
-interface AudienceProfile {
-  criteria: AudienceCriteria;
-  estimatedSize: number;
-  topInterests: string[];
-  avgEngagement: number;
-}
+export function calculateOwnerEarnings(params: {
+  grossRevenue: number;
+  ownerPercent?: number;
+  deductGST?: boolean;
+}): {
+  ownerAmount: number;
+  platformAmount: number;
+  gstAmount?: number;
+  netPayable?: number;
+} {
+  const ownerPercent = params.ownerPercent ?? 70;
+  const ownerAmount = params.grossRevenue * (ownerPercent / 100);
+  const platformAmount = params.grossRevenue - ownerAmount;
 
-export class AudienceBuilder {
-  /**
-   * Build audience from criteria
-   */
-  async buildAudience(criteria: AudienceCriteria): Promise<AudienceProfile> {
-    // Estimate audience size based on criteria
-    const estimatedSize = this.estimateSize(criteria);
-
-    // Get top interests
-    const topInterests = criteria.interests || this.getDefaultInterests(criteria);
-
-    // Calculate average engagement
-    const avgEngagement = this.estimateEngagement(criteria);
-
+  if (params.deductGST) {
+    const gstAmount = platformAmount * 0.18;
     return {
-      criteria,
-      estimatedSize,
-      topInterests,
-      avgEngagement,
+      ownerAmount,
+      platformAmount,
+      gstAmount: Math.round(gstAmount * 100) / 100,
+      netPayable: Math.round((ownerAmount - gstAmount) * 100) / 100,
     };
   }
 
-  /**
-   * Expand audience with lookalikes
-   */
-  async expandAudience(
-    baseCriteria: AudienceCriteria,
-    expansionFactor = 1.5
-  ): Promise<AudienceCriteria> {
-    return {
-      ...baseCriteria,
-      interests: [
-        ...(baseCriteria.interests || []),
-        ...this.getRelatedInterests(baseCriteria),
-      ],
-    };
-  }
-
-  /**
-   * Estimate audience size
-   */
-  private estimateSize(criteria: AudienceCriteria): number {
-    let base = 100000;
-
-    if (criteria.rfmSegments?.length) {
-      base *= criteria.rfmSegments.length * 0.3;
-    }
-    if (criteria.interests?.length) {
-      base *= criteria.interests.length * 0.2;
-    }
-    if (criteria.locations?.length) {
-      base *= Math.min(criteria.locations.length * 0.3, 2);
-    }
-
-    return Math.round(base);
-  }
-
-  /**
-   * Estimate engagement rate
-   */
-  private estimateEngagement(criteria: AudienceCriteria): number {
-    let engagement = 2.5; // Base 2.5%
-
-    if (criteria.rfmSegments?.includes('champions')) {
-      engagement += 1.5;
-    }
-    if (criteria.interests?.length) {
-      engagement += criteria.interests.length * 0.3;
-    }
-
-    return Math.min(engagement, 5);
-  }
-
-  /**
-   * Get default interests for RFM segments
-   */
-  private getDefaultInterests(criteria: AudienceCriteria): string[] {
-    if (criteria.rfmSegments?.includes('champions')) {
-      return ['luxury', 'premium', 'exclusive'];
-    }
-    if (criteria.rfmSegments?.includes('loyal')) {
-      return ['deals', 'loyalty', 'rewards'];
-    }
-    return ['general', 'lifestyle'];
-  }
-
-  /**
-   * Get related interests for expansion
-   */
-  private getRelatedInterests(baseInterests: string[]): string[] {
-    const relationMap: Record<string, string[]> = {
-      food: ['dining', 'restaurants', 'delivery'],
-      travel: ['hotels', 'flights', 'vacations'],
-      shopping: ['fashion', 'electronics', 'home'],
-    };
-
-    const related: string[] = [];
-    for (const interest of baseInterests) {
-      related.push(...(relationMap[interest.toLowerCase()] || []));
-    }
-    return [...new Set(related)];
-  }
+  return { ownerAmount, platformAmount };
 }
-
-export const audienceBuilder = new AudienceBuilder();

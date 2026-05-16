@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  adbazaar-backend:
+    build: .
+    ports:
+      - "4085:4085"
+    environment:
+      - NODE_ENV=production
+      - PORT=4085
+      - MONGODB_URI=mongodb://mongo:27017/adbazaar
+      - REDIS_URL=redis://redis:6379
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+      - PAYMENT_SERVICE_URL=http://payment-service:4001
+      - AUTH_URL=http://auth-service:3000
+      - NOTIFICATION_URL=http://notification-service:4004
+      - DOOH_INTEL_URL=http://dooh-intelligence:4080
+      - ATTRIBUTION_URL=http://dooh-attribution:4081
+    depends_on:
+      - mongo
+      - redis
+    restart: unless-stopped
+    networks:
+      - rez-network
+
+  mongo:
+    image: mongo:6
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    networks:
+      - rez-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - rez-network
+
+volumes:
+  mongo-data:
+
+networks:
+  rez-network:
+    driver: bridge

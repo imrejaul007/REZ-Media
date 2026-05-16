@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts"
+    "test:e2e": "jest --testPathPattern=e2e",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -33,6 +35,7 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"]
+    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "testPathIgnorePatterns": ["node_modules"]
   }
 }
