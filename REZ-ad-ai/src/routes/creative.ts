@@ -20,6 +20,24 @@ import {
 
 const router = Router();
 
+// Internal auth middleware
+function requireInternalAuth(req: Request, res: Response, next: NextFunction): void {
+  const apiKey = req.headers['x-internal-token'] as string;
+  const validKey = process.env.INTERNAL_SERVICE_TOKEN;
+
+  if (!validKey) {
+    if (process.env.NODE_ENV === 'development') return next();
+    res.status(503).json({ success: false, error: 'Service not configured' });
+    return;
+  }
+
+  if (apiKey !== validKey) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
 // ============================================================================
 // Validation Error Handler
 // ============================================================================
@@ -40,14 +58,14 @@ function handleZodError(err: ZodError, res: Response): void {
 }
 
 // ============================================================================
-// Banner Generation Routes
+// Banner Generation Routes (Protected)
 // ============================================================================
 
 /**
  * POST /api/creative/banner
  * Generate banner ad assets
  */
-router.post('/banner', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/banner', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = GenerateBannerSchema.safeParse(req.body);
 
@@ -89,7 +107,7 @@ router.post('/banner', async (req: Request, res: Response, next: NextFunction): 
  * POST /api/creative/banner/variations
  * Generate multiple banner variations for A/B testing
  */
-router.post('/banner/variations', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/banner/variations', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { baseAssets, count = 4, testType = 'full', brandName } = req.body;
 
@@ -139,7 +157,7 @@ router.post('/banner/variations', async (req: Request, res: Response, next: Next
  * POST /api/creative/copy
  * Generate ad copy with headlines and body text
  */
-router.post('/copy', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/copy', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = GenerateCopySchema.safeParse(req.body);
 
@@ -194,7 +212,7 @@ router.post('/copy', async (req: Request, res: Response, next: NextFunction): Pr
  * POST /api/creative/cta
  * Generate Call-to-Action text and configuration
  */
-router.post('/cta', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/cta', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { type = 'learn_more', customText, style = 'primary' } = req.body;
 
@@ -261,7 +279,7 @@ router.post('/cta', async (req: Request, res: Response, next: NextFunction): Pro
  * POST /api/creative/analyze
  * Analyze ad creative performance
  */
-router.post('/analyze', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/analyze', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { adId, campaignId, dateRange, includeBenchmarks } = req.body;
 
@@ -311,7 +329,7 @@ router.post('/analyze', async (req: Request, res: Response, next: NextFunction):
  * POST /api/creative/suggest
  * Get creative improvement suggestions
  */
-router.post('/suggest', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/suggest', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaignId, objective = 'consideration', targetAudience, competitorAds, topPerformingElements } = req.body;
 
@@ -377,7 +395,7 @@ router.post('/suggest', async (req: Request, res: Response, next: NextFunction):
  * POST /api/creative/batch
  * Generate multiple ad assets in one request
  */
-router.post('/batch', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/batch', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { brandName, productName, category, platform, formats = ['medium_rectangle'] } = req.body;
 

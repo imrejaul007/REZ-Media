@@ -15,6 +15,24 @@ import { ScreenManagementService } from '../services/screenManagement';
 import { AreaIntelligenceService } from '../services/areaIntelligence';
 import { DOOHCampaign, DeliveryRequest, CampaignCreateRequest } from '../types';
 
+// Internal auth middleware
+function requireInternalAuth(req: Request, res: Response, next: Function): void {
+  const apiKey = req.headers['x-internal-token'] as string;
+  const validKey = process.env.INTERNAL_SERVICE_TOKEN;
+
+  if (!validKey) {
+    if (process.env.NODE_ENV === 'development') return next();
+    res.status(503).json({ success: false, error: 'Service not configured' });
+    return;
+  }
+
+  if (apiKey !== validKey) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
 export interface AdRoutesConfig {
   adDecisionService: AdDecisionService;
   personalizationService: PersonalizationService;
@@ -27,14 +45,14 @@ export function createAdRoutes(config: AdRoutesConfig): Router {
   const { adDecisionService, personalizationService, screenService, areaService } = config;
 
   // ==========================================================================
-  // Campaign Management
+  // Campaign Management (Protected)
   // ==========================================================================
 
   /**
    * POST /ads/campaigns
    * Create a new campaign
    */
-  router.post('/campaigns', async (req: Request, res: Response) => {
+  router.post('/campaigns', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const campaignData: CampaignCreateRequest = req.body;
 

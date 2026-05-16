@@ -61,7 +61,7 @@ function sendValidationError(res: Response, errors: ValidationError[]): void {
  * POST /api/optimize/bid
  * Optimize bid strategy for campaign
  */
-router.post('/bid', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/bid', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const {
       campaignId,
@@ -151,7 +151,7 @@ router.post('/bid', async (req: Request, res: Response, next: NextFunction): Pro
  * POST /api/optimize/bid/batch
  * Optimize bids for multiple campaigns
  */
-router.post('/bid/batch', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/bid/batch', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaigns } = req.body;
 
@@ -238,7 +238,7 @@ router.post('/bid/batch', async (req: Request, res: Response, next: NextFunction
  * POST /api/optimize/targeting
  * Optimize targeting parameters
  */
-router.post('/targeting', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/targeting', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaignId, currentTargeting, performanceData } = req.body;
 
@@ -331,7 +331,7 @@ router.post('/targeting', async (req: Request, res: Response, next: NextFunction
  * POST /api/optimize/improve
  * Get actionable improvement suggestions
  */
-router.post('/improve', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/improve', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaignId, performanceData, budget } = req.body;
 
@@ -401,7 +401,7 @@ router.post('/improve', async (req: Request, res: Response, next: NextFunction):
  * GET /api/optimize/improve/:campaignId
  * Get cached improvement suggestions for a campaign
  */
-router.get('/improve/:campaignId', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/improve/:campaignId', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaignId } = req.params;
 
@@ -429,7 +429,7 @@ router.get('/improve/:campaignId', async (req: Request, res: Response, next: Nex
  * POST /api/optimize/audit
  * Complete campaign audit with all optimization recommendations
  */
-router.post('/audit', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/audit', requireInternalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { campaignId, currentBid, currentTargeting, metrics, budget } = req.body;
 

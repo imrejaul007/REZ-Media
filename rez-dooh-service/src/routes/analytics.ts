@@ -15,6 +15,24 @@ import { AnalyticsService } from '../services/analytics';
 import { ScreenManagementService } from '../services/screenManagement';
 import { QRGenerationRequest } from '../types';
 
+// Internal API key auth middleware
+function requireInternalAuth(req: Request, res: Response, next: Function): void {
+  const apiKey = req.headers['x-internal-token'] as string;
+  const validKey = process.env.INTERNAL_SERVICE_TOKEN;
+
+  if (!validKey) {
+    if (process.env.NODE_ENV === 'development') return next();
+    res.status(503).json({ success: false, error: 'Service not configured' });
+    return;
+  }
+
+  if (apiKey !== validKey) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
 export interface AnalyticsRoutesConfig {
   analyticsService: AnalyticsService;
   screenService: ScreenManagementService;
@@ -25,12 +43,12 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
   const { analyticsService, screenService } = config;
 
   // ==========================================================================
-  // Impression Tracking
+  // Impression Tracking (Public - screen devices report)
   // ==========================================================================
 
   /**
    * POST /analytics/impressions
-   * Record impression events
+   * Record impression events (public - screens report)
    */
   router.post('/impressions', async (req: Request, res: Response) => {
     try {
@@ -155,7 +173,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/screens/:id
    * Get analytics for a screen
    */
-  router.get('/screens/:id', async (req: Request, res: Response) => {
+  router.get('/screens/:id', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const period = (req.query.period as 'hour' | 'day' | 'week' | 'month') || 'day';
@@ -191,7 +209,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/screens/:id/earnings
    * Get earnings for a screen
    */
-  router.get('/screens/:id/earnings', async (req: Request, res: Response) => {
+  router.get('/screens/:id/earnings', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -249,7 +267,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/overview
    * Get analytics overview (summary stats)
    */
-  router.get('/overview', async (req: Request, res: Response) => {
+  router.get('/overview', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const networkAnalytics = analyticsService.getNetworkAnalytics('day');
       const networkStats = screenService.getNetworkStats();
@@ -291,7 +309,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * POST /analytics/qr/generate
    * Generate QR code for an ad
    */
-  router.post('/qr/generate', async (req: Request, res: Response) => {
+  router.post('/qr/generate', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const request: QRGenerationRequest = req.body;
 
@@ -359,7 +377,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/qr/:id
    * Get QR code analytics
    */
-  router.get('/qr/:id', async (req: Request, res: Response) => {
+  router.get('/qr/:id', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -432,7 +450,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/payouts/:ownerId
    * Get payout history for an owner
    */
-  router.get('/payouts/:ownerId', async (req: Request, res: Response) => {
+  router.get('/payouts/:ownerId', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { ownerId } = req.params;
       const payouts = analyticsService.getPayoutHistory(ownerId);
@@ -459,7 +477,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/fraud
    * Get fraud alerts
    */
-  router.get('/fraud', async (req: Request, res: Response) => {
+  router.get('/fraud', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const screenId = req.query.screen_id as string;
       const limit = parseInt(req.query.limit as string) || 100;
@@ -511,7 +529,7 @@ export function createAnalyticsRoutes(config: AnalyticsRoutesConfig): Router {
    * GET /analytics/stats
    * Get analytics service statistics
    */
-  router.get('/stats', async (req: Request, res: Response) => {
+  router.get('/stats', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const stats = analyticsService.getStats();
 
