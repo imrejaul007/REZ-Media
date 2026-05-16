@@ -113,11 +113,89 @@ Final CPM = Base CPM
 | `adsqr/` | QR code campaigns | 4068 |
 | `reks-ads/` | Reks ad platform | 4069 |
 
+### QR Ecosystem (REZ-Media)
+
+| QR Product | Purpose | Port |
+|-----------|---------|------|
+| **Ads QR (adsqr)** | QR-based ad campaigns + coin rewards | 4068 |
+| **Shelf QR** | Retail shelf product QR | - |
+
+#### Ads QR Features
+
+| Feature | Description |
+|---------|-------------|
+| Campaign Management | Create and manage QR ad campaigns |
+| Coin Rewards | Reward users with coins for scanning |
+| Analytics | Track campaign performance |
+| Brand Integration | Connect with brand profiles |
+
+#### Shelf QR Features
+
+| Feature | Description |
+|---------|-------------|
+| Product Info | Display product details on scan |
+| Reviews | Show product ratings and reviews |
+| Purchase Links | Direct links to purchase |
+
+For complete cross-company QR documentation, see [docs/QR-ECOSYSTEM.md](../docs/QR-ECOSYSTEM.md).
+
 ### REZ Business AI Services
 
 | Service | Description | Port |
 |---------|-------------|------|
 | `rez-business-ai/` | Business AI - Main service | 4059 |
+
+#### REZ Business AI - Complete
+
+**Git:** `github.com/imrejaul007/REZ-business-ai`
+
+##### Core Engines
+
+| Engine | File | Purpose |
+|--------|------|---------|
+| Goal Engine | `goalEngine.ts` | Revenue, customer, retention goals |
+| Playbook Engine | `playbookEngine.ts` | Industry-specific automations |
+| Risk Engine | `riskEngine.ts` | Margin, budget, compliance checks |
+| Memory Layer | `memoryLayer.ts` | Learn from every action |
+| Campaign Bundles | `campaignBundles.ts` | One-click campaigns |
+| Ad Execution Hub | `adExecutionHub.ts` | Multi-channel ads |
+
+##### Advanced Intelligence
+
+| Engine | File | Purpose |
+|--------|------|---------|
+| Decision Engine | `decisionEngine.ts` | Real-time decisions (<50ms) |
+| Reinforcement Learning | `reinforcementLearning.ts` | Self-improving AI |
+| A/B Testing | `abTesting.ts` | Validate strategies |
+| Autonomous Commerce | `autonomousCommerce.ts` | Self-optimizing |
+| Full Attribution | `attributionFull.ts` | Cross-channel tracking |
+
+##### How It Works
+
+```
+Monitor → Analyze → Decide → Execute → Learn → Optimize
+   ↓         ↓         ↓         ↓        ↓        ↓
+Weather   Patterns   <50ms    Auto     Memory   Better
+Events    Risk       Decision  Campaigns Record   Next
+Demand    ROI       Actions   Notifications Results Actions
+```
+
+##### One-Click Campaigns
+
+| Bundle | Est. Impact |
+|--------|-------------|
+| Weekend Rush | +₹8,000 |
+| Happy Hour | +₹5,000 |
+| Win-Back | +₹5,000 |
+| Festival Boost | +₹25,000 |
+| Rainy Day | +₹10,000 |
+
+##### Connected Services
+
+- REZ-Merchant (Products, Orders, Customers)
+- REZ-Media (Ads, Campaigns, Engagement)
+- RABTUL (Notifications, Wallet, Payments)
+- REZ-Intelligence (Demand, Weather, Events)
 
 ### E-Commerce Connectors
 

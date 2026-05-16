@@ -165,7 +165,7 @@ class DOOHIntelligenceClient {
     baseCPM: number;
     maxCPM: number;
   }[] | null> {
-    const result = await this.get<{ success: boolean; data: { screens: any[] } }>(
+    const result = await this.get<{ success: boolean; data: { screens: : unknown[] } }>(
       '/api/screens/types',
       'screen-types',
       300000 // 5 min cache

@@ -13,6 +13,27 @@ import { ScreenManagementService, NetworkStats } from '../services/screenManagem
 import { AnalyticsService } from '../services/analytics';
 import { ScreenRegistration, ScreenFilter, ScreenStatus } from '../types';
 
+// Internal API key auth middleware for protected routes
+function requireInternalAuth(req: Request, res: Response, next: Function): void {
+  const apiKey = req.headers['x-internal-token'] as string;
+  const validKey = process.env.INTERNAL_SERVICE_TOKEN;
+
+  if (!validKey) {
+    // Skip auth in dev if no token configured
+    if (process.env.NODE_ENV === 'development') {
+      return next();
+    }
+    res.status(503).json({ success: false, error: 'Service not configured' });
+    return;
+  }
+
+  if (apiKey !== validKey) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
 export interface ScreenRoutesConfig {
   screenService: ScreenManagementService;
   analyticsService: AnalyticsService;
@@ -23,7 +44,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
   const { screenService, analyticsService } = config;
 
   // ==========================================================================
-  // Screen Registration
+  // Public routes (for screen devices)
   // ==========================================================================
 
   /**
@@ -347,7 +368,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
    * GET /screens/stats
    * Get network statistics
    */
-  router.get('/stats/network', async (req: Request, res: Response) => {
+  router.get('/stats/network', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const stats = screenService.getNetworkStats();
       return res.json({
@@ -367,7 +388,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
    * GET /screens/stats/types
    * Get screen types summary
    */
-  router.get('/stats/types', async (req: Request, res: Response) => {
+  router.get('/stats/types', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const types = screenService.getScreenTypesSummary();
       return res.json({
@@ -387,7 +408,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
    * GET /screens/stats/cities
    * Get cities summary
    */
-  router.get('/stats/cities', async (req: Request, res: Response) => {
+  router.get('/stats/cities', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const cities = screenService.getCitiesSummary();
       return res.json({
@@ -411,7 +432,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
    * GET /screens/:id/apikey
    * Get screen API key (requires authentication)
    */
-  router.get('/:id/apikey', async (req: Request, res: Response) => {
+  router.get('/:id/apikey', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -452,7 +473,7 @@ export function createScreenRoutes(config: ScreenRoutesConfig): Router {
    * POST /screens/:id/apikey/rotate
    * Rotate screen API key (invalidates old key)
    */
-  router.post('/:id/apikey/rotate', async (req: Request, res: Response) => {
+  router.post('/:id/apikey/rotate', requireInternalAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 

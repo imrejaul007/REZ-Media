@@ -272,12 +272,12 @@ class DOOHPriveTargetingService {
   /**
    * Build Prive targeting filter for campaign creation
    */
-  buildTargetingFilter(config: DOOHPriveTargeting): Record<string, any> {
+  buildTargetingFilter(config: DOOHPriveTargeting): Record<string, unknown> {
     if (!config.enabled) {
       return {};
     }
 
-    const filter: Record<string, any> = {
+    const filter: Record<string, unknown> = {
       prive_targeting_enabled: true,
     };
 

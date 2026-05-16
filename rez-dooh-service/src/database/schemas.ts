@@ -336,7 +336,15 @@ const ImpressionEventSchema = new Schema<IImpressionEventDocument>({
   timestamp: { type: Date, default: Date.now, index: true },
   durationPlayed: { type: Number, default: 0 },
   viewable: { type: Boolean, default: true },
-  metadata: Schema.Types.Mixed,
+  metadata: {
+    ip?: string;
+    userAgent?: string;
+    country?: string;
+    city?: string;
+    deviceType?: string;
+    browser?: string;
+    os?: string;
+  },
 }, {
   timestamps: true,
 });
@@ -467,7 +475,13 @@ const HeartbeatSchema = new Schema<IHeartbeatDocument>({
   playlistVersion: Number,
   impressionsLastHour: { type: Number, default: 0 },
   errors: [String],
-  metadata: Schema.Types.Mixed,
+  metadata: {
+    cpuUsage?: number;
+    memoryUsage?: number;
+    networkStatus?: string;
+    storageAvailable?: number;
+    version?: string;
+  },
 }, {
   timestamps: true,
 });
