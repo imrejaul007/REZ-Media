@@ -1,5 +1,6 @@
 /**
  * REZ Birthday Rewards - Entry Point
+ * Automated birthday rewards and celebration campaigns
  */
 
 import express from 'express';
@@ -20,12 +21,87 @@ app.get('/health', (_req, res) => {
 
 // Check eligibility
 app.get('/api/birthday/eligibility/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  // Mock eligibility check
+  const daysUntilBirthday = Math.floor(Math.random() * 365);
+  const eligible = daysUntilBirthday <= 7;
+
   res.json({
     success: true,
     data: {
-      eligible: true,
-      daysUntilBirthday: Math.floor(Math.random() * 365),
-      reward: { coins: 100, discount: 10 },
+      eligible,
+      userId,
+      daysUntilBirthday,
+      reward: eligible ? {
+        coins: 100,
+        discount: 10,
+        voucher: 'BIRTHDAY10',
+      } : null,
+    },
+  });
+});
+
+// Get birthday campaign
+app.get('/api/birthday/campaign', async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      campaignId: 'bday-2026',
+      name: 'Birthday Special',
+      validDays: 7,
+      rewardTypes: ['coins', 'discount', 'voucher', 'freebie'],
+      terms: 'Valid 7 days before and after birthday',
+    },
+  });
+});
+
+// Trigger birthday message
+app.post('/api/birthday/notify', async (req, res) => {
+  const { userId, channel } = req.body;
+
+  res.json({
+    success: true,
+    data: {
+      notificationId: `notif-${Date.now()}`,
+      userId,
+      channel: channel || 'whatsapp',
+      sent: true,
+      sentAt: new Date(),
+    },
+  });
+});
+
+// Track birthday reward redemption
+app.post('/api/birthday/redeem', async (req, res) => {
+  const { userId, rewardType } = req.body;
+
+  res.json({
+    success: true,
+    data: {
+      redemptionId: `redeem-${Date.now()}`,
+      userId,
+      rewardType,
+      redeemedAt: new Date(),
+      status: 'success',
+    },
+  });
+});
+
+// Analytics
+app.get('/api/birthday/stats', async (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      totalRewards: 15420,
+      redeemedRewards: 12850,
+      activeCampaigns: 3,
+      avgEngagement: 87.5,
+      topRewards: [
+        { type: 'coins', count: 8500 },
+        { type: 'discount', count: 3200 },
+        { type: 'voucher', count: 1150 },
+      ],
     },
   });
 });
