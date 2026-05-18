@@ -192,10 +192,38 @@ Demand    ROI       Actions   Notifications Results Actions
 
 ##### Connected Services
 
-- REZ-Merchant (Products, Orders, Customers)
-- REZ-Media (Ads, Campaigns, Engagement)
-- RABTUL (Notifications, Wallet, Payments)
-- REZ-Intelligence (Demand, Weather, Events)
+| Service | URL | Port | Purpose |
+|---------|-----|------|---------|
+| REZ Intelligence | rez-intelligence.rez.money | 4123 | Demand, Churn, LTV |
+| RABTUL Auth | rez-auth.rez.money | 4000 | User verification |
+| RABTUL Wallet | rez-wallet.rez.money | 4002 | Cashback |
+| RABTUL Notifications | rez-notifications.rez.money | 4004 | Push, WhatsApp |
+| RABTUL Coupons | rez-coupon.rez.money | 4009 | Discount codes |
+| REZ Media Engagement | rez-engagement.rez.money | 4017 | Campaigns |
+| REZ Media AdAI | rez-adai.rez.money | 4021 | Ads |
+| REZ Media QR | adsqr.rez.money | 4068 | QR tracking |
+| CorpPerks | corpperks.rez.money | - | B2B |
+
+##### Integration APIs
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/campaign/execute` | POST | Complete campaign execution |
+| `/api/intelligence/signals/:id` | GET | Get demand signals |
+| `/api/rabtul/notify` | POST | Send notification |
+| `/api/rabtul/wallet/credit` | POST | Credit cashback |
+| `/api/media/campaign` | POST | Create campaign |
+| `/api/corpperks/b2b-deal` | POST | B2B deal |
+
+##### Complete Flow
+
+```
+Merchant → REZ Business AI → Intelligence → RABTUL → Notifications
+                                    ↓
+                              Media → Campaigns
+                                    ↓
+                              CorpPerks → B2B
+```
 
 ### E-Commerce Connectors
 

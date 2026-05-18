@@ -4,4 +4,5 @@
  * Re-exports all service modules for convenient imports
  */
 
-export * from './attributionConnector';
+// Export from unifiedAttributionHub
+export * from './unifiedAttributionHub.js';
