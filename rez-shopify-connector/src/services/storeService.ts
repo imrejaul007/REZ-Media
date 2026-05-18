@@ -4,9 +4,217 @@ import { ShopifyAdminClient } from '../clients/adminClient';
 import { logger } from '../config';
 import type { ShopifyStoreInfo } from '../types';
 
-// ── Store Service ────────────────────────────────────────────────────────────────
+// ── Tenant-Aware Store Service ─────────────────────────────────────────────────
 
 export class StoreService {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TENANT-SCOPED METHODS (Multi-Tenant Support)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get all stores for a specific tenant
+   * CRITICAL: tenantId is REQUIRED for isolation
+   */
+  static async getAllStoresForTenant(tenantId: string): Promise<IStoreDocument[]> {
+    return Store.find({
+      tenantId, // Tenant isolation enforced
+      isActive: true,
+    }).exec();
+  }
+
+  /**
+   * List stores for a tenant with pagination and filters
+   * CRITICAL: tenantId is REQUIRED
+   */
+  static async listStoresForTenant(
+    tenantId: string,
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      status?: 'active' | 'inactive' | 'all';
+      activeOnly?: boolean;
+    } = {}
+  ): Promise<{
+    stores: IStoreDocument[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  }> {
+    const { page = 1, limit = 20, search, status, activeOnly = false } = params;
+
+    // Build query with tenant isolation
+    const query: Record<string, unknown> = { tenantId };
+
+    if (activeOnly || status === 'active') {
+      query.isActive = true;
+    } else if (status === 'inactive') {
+      query.isActive = false;
+    }
+
+    if (search) {
+      query.$or = [
+        { shopifyDomain: { $regex: search, $options: 'i' } },
+        { 'storeInfo.name': { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [stores, total] = await Promise.all([
+      Store.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit).exec(),
+      Store.countDocuments(query),
+    ]);
+
+    logger.debug('[StoreService] Listed stores for tenant', {
+      tenantId,
+      count: stores.length,
+      total,
+    });
+
+    return {
+      stores,
+      total,
+      page,
+      limit,
+      hasMore: skip + stores.length < total,
+    };
+  }
+
+  /**
+   * Get a single store by ID for a specific tenant
+   * CRITICAL: Enforces tenant isolation
+   */
+  static async getStoreByIdForTenant(
+    storeId: string,
+    tenantId: string
+  ): Promise<IStoreDocument | null> {
+    const store = await Store.findOne({
+      _id: storeId,
+      tenantId, // Tenant isolation enforced
+    });
+
+    if (!store) {
+      logger.warn('[StoreService] Store not found or tenant mismatch', {
+        storeId,
+        tenantId,
+      });
+    }
+
+    return store;
+  }
+
+  /**
+   * Get a single store by domain for a specific tenant
+   * CRITICAL: Enforces tenant isolation
+   */
+  static async getStoreByDomainForTenant(
+    domain: string,
+    tenantId: string
+  ): Promise<IStoreDocument | null> {
+    return Store.findOne({
+      shopifyDomain: domain.toLowerCase(),
+      tenantId, // Tenant isolation enforced
+    } as any);
+  }
+
+  /**
+   * Get a store by Shopify store ID for a specific tenant
+   * CRITICAL: Enforces tenant isolation
+   */
+  static async getStoreByShopifyIdForTenant(
+    shopifyStoreId: number,
+    tenantId: string
+  ): Promise<IStoreDocument | null> {
+    return Store.findOne({
+      shopifyStoreId,
+      tenantId, // Tenant isolation enforced
+    });
+  }
+
+  /**
+   * Disconnect and deactivate a store for a specific tenant
+   * CRITICAL: Verifies tenant ownership before disconnecting
+   */
+  static async disconnectStoreForTenant(
+    storeId: string,
+    tenantId: string
+  ): Promise<void> {
+    const store = await this.getStoreByIdForTenant(storeId, tenantId);
+
+    if (!store) {
+      throw new Error('Store not found');
+    }
+
+    // Deactivate via auth service
+    await AuthService.deactivateStore(store.shopifyDomain);
+
+    logger.info('[StoreService] Disconnected store for tenant', {
+      storeId,
+      tenantId,
+      shopifyDomain: store.shopifyDomain,
+    });
+  }
+
+  /**
+   * Get store statistics for a specific tenant
+   * CRITICAL: Enforces tenant isolation
+   */
+  static async getStoreStatsForTenant(
+    storeId: string,
+    tenantId: string
+  ): Promise<{
+    storeDomain: string;
+    tenantId: string;
+    brandId: string;
+    connectedSince: Date;
+    totalItemsSynced: {
+      products: number;
+      orders: number;
+      customers: number;
+      inventory: number;
+    };
+    lastSync: Date | null;
+    isActive: boolean;
+  } | null> {
+    const store = await this.getStoreByIdForTenant(storeId, tenantId);
+
+    if (!store) {
+      return null;
+    }
+
+    const lastSyncDates = [
+      store.syncStatus.products.lastSyncAt,
+      store.syncStatus.orders.lastSyncAt,
+      store.syncStatus.customers.lastSyncAt,
+      store.syncStatus.inventory.lastSyncAt,
+    ].filter(Boolean) as Date[];
+
+    const lastSync = lastSyncDates.length > 0
+      ? new Date(Math.max(...lastSyncDates.map((d) => d.getTime())))
+      : null;
+
+    return {
+      storeDomain: store.shopifyDomain,
+      tenantId: store.tenantId,
+      brandId: store.brandId,
+      connectedSince: store.createdAt,
+      totalItemsSynced: {
+        products: store.syncStatus.products.itemsSynced,
+        orders: store.syncStatus.orders.itemsSynced,
+        customers: store.syncStatus.customers.itemsSynced,
+        inventory: store.syncStatus.inventory.itemsSynced,
+      },
+      lastSync,
+      isActive: store.isActive,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LEGACY METHODS (for backward compatibility)
+  // Note: These methods do NOT enforce tenant isolation
+  // ═══════════════════════════════════════════════════════════════════════════
   /**
    * Get all connected stores
    */

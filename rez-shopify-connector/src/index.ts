@@ -16,6 +16,8 @@ import compression from 'compression';
 import mongoSanitize from 'express-mongo-sanitize';
 import mongoose from 'mongoose';
 import client from 'prom-client';
+import session from 'express-session';
+import { RedisStore } from 'connect-redis';
 
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
@@ -26,6 +28,7 @@ import { logger } from './config/logger';
 import { serverConfig, validateConfig } from './config';
 
 import shopifyRoutes from './routes';
+import tenantRoutes from './routes/tenantRoutes';
 
 // ── Express App Setup ─────────────────────────────────────────────────────────
 
@@ -68,6 +71,29 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(mongoSanitize());
+
+// ── Session for OAuth (Multi-Tenant) ───────────────────────────────────────────────
+
+const redisClient = getRedis();
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: 'rez-shopify-session:',
+});
+
+app.use(
+  session({
+    store: redisStore,
+    secret: process.env.SESSION_SECRET || serverConfig.jwtSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: serverConfig.nodeEnv === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+    name: 'rez.sid',
+  })
+);
 
 // ── Request Logging ──────────────────────────────────────────────────────────
 
@@ -184,7 +210,11 @@ app.get('/metrics', async (_req: Request, res: Response) => {
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 
+// Legacy routes (without tenant isolation)
 app.use('/api/shopify', shopifyRoutes);
+
+// New tenant-aware routes (with tenant isolation)
+app.use('/api/shopify', tenantRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────────────────────
 

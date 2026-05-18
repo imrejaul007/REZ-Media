@@ -13,6 +13,60 @@ import {
 import { logger } from '../utils/logger';
 import { defaultTemplates } from '../utils/templates';
 
+/**
+ * PERFORMANCE ISSUE: Unbounded In-Memory Storage (Lines 17-19)
+ * ------------------------------------------
+ * JourneyStore uses unbounded Map collections that grow indefinitely.
+ *
+ * Memory Risks:
+ *   1. journeys Map: Grows with each created journey, never pruned
+ *   2. entries Map: Grows with every journey entry, no TTL
+ *   3. templates Map: Grows with custom templates, rarely pruned
+ *
+ * Operational Issues:
+ *   - Restart = data loss (not persistent)
+ *   - Memory grows unbounded in long-running processes
+ *   - No cleanup of completed/exited entries
+ *
+ * Fix Approach (TTL & Size Limits Required):
+ *   Option A: Add TTL to entries
+ *   ```typescript
+ *   private entriesTTLHours = 24; // Configurable
+ *
+ *   // On read: filter expired
+ *   getEntry(id: string): JourneyEntry | undefined {
+ *     const entry = this.entries.get(id);
+ *     if (entry && Date.now() - entry.createdAt.getTime() > this.entriesTTLHours * 3600000) {
+ *       this.entries.delete(id);
+ *       return undefined;
+ *     }
+ *     return entry;
+ *   }
+ *   ```
+ *
+ *   Option B: Background cleanup job
+ *   ```typescript
+ *   // Run every hour
+ *   setInterval(() => {
+ *     const cutoff = Date.now() - this.entriesTTLHours * 3600000;
+ *     for (const [id, entry] of this.entries) {
+ *       if (entry.completedAt && entry.completedAt.getTime() < cutoff) {
+ *         this.entries.delete(id);
+ *       }
+ *     }
+ *   }, 3600000);
+ *   ```
+ *
+ *   Option C: Move to persistent storage (recommended for production)
+ *   - Use MongoDB with TTL indexes on entries
+ *   - Add compound indexes for common queries
+ *   - Use cursor-based pagination for large result sets
+ *
+ * Required MongoDB Indexes for Entry Collection:
+ *   - { journeyId: 1, status: 1 } - Active entries by journey
+ *   - { contactId: 1, status: 1 } - Contact's active journeys
+ *   - { createdAt: 1 } with expireAfterSeconds - TTL for completed entries
+ */
 // In-memory storage (in production, use a database)
 class JourneyStore {
   private journeys: Map<string, Journey> = new Map();

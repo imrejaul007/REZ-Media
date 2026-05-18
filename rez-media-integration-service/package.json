@@ -1,0 +1,11 @@
+{
+  "name": "rez-media-integration-service",
+  "version": "1.0.0",
+  "description": "REZ-Media integration with RABTUL-Technologies",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  }
+}

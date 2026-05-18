@@ -1,0 +1,46 @@
+# REZ Ads QR Service - Kubernetes Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adsqr-service
+  namespace: rez-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: adsqr-service
+  template:
+    metadata:
+      labels:
+        app: adsqr-service
+    spec:
+      containers:
+        - name: adsqr-service
+          image: rezplatform/adsqr-service:latest
+          ports:
+            - containerPort: 3008
+          env:
+            - name: PORT
+              value: "3008"
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: adsqr-secrets
+                  key: mongodb-uri
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adsqr-service
+  namespace: rez-platform
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3008
+      targetPort: 3008
+  selector:
+    app: adsqr-service

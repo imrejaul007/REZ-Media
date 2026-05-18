@@ -1,0 +1,109 @@
+openapi: 3.0.3
+info:
+  title: REZ Ads QR Service API
+  description: QR code advertising service with coin rewards
+  version: 2.0.0
+
+servers:
+  - url: https://ads-qr.rezapp.com
+  - url: http://localhost:3008
+
+tags:
+  - name: Campaigns
+  - name: Scans
+  - name: Analytics
+  - name: Support
+
+paths:
+  /api/qr/generate:
+    post:
+      tags: [Campaigns]
+      summary: Generate QR code
+      responses:
+        '201':
+          description: QR generated
+
+  /api/qr/scan:
+    post:
+      tags: [Scans]
+      summary: Record QR scan
+      responses:
+        '200':
+          description: Scan recorded
+
+  /api/campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List campaigns
+      responses:
+        '200':
+          description: List of campaigns
+
+    post:
+      tags: [Campaigns]
+      summary: Create campaign
+      responses:
+        '201':
+          description: Campaign created
+
+  /api/campaigns/{id}:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign
+      responses:
+        '200':
+          description: Campaign details
+
+  /api/campaigns/optimize/{id}:
+    get:
+      tags: [Analytics]
+      summary: Get ML-optimized recommendations
+      responses:
+        '200':
+          description: Optimization recommendations
+
+  /api/fraud/check:
+    post:
+      tags: [Analytics]
+      summary: Check for fraud
+      responses:
+        '200':
+          description: Fraud check result
+
+  /api/fraud/analytics:
+    get:
+      tags: [Analytics]
+      summary: Get fraud analytics
+      responses:
+        '200':
+          description: Fraud analytics
+
+  /api/analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Get analytics dashboard
+      responses:
+        '200':
+          description: Dashboard data
+
+  /api/support/ticket:
+    post:
+      tags: [Support]
+      summary: Create support ticket
+      responses:
+        '201':
+          description: Ticket created
+
+  /api/support/campaign-health/{id}:
+    get:
+      tags: [Support]
+      summary: Get campaign health
+      responses:
+        '200':
+          description: Health status
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer

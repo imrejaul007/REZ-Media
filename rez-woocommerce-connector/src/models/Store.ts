@@ -1,7 +1,8 @@
 /**
- * Connected Store Model
+ * Connected Store Model (Multi-Tenant)
  *
  * MongoDB model for storing WooCommerce store connections.
+ * Enhanced with tenantId and brandId for multi-tenant support.
  */
 
 import mongoose, { Document, Schema } from 'mongoose';
@@ -86,15 +87,38 @@ export interface IStoreMethods {
 // Static methods interface
 export interface IStoreModel extends mongoose.Model<IStoreDocument, {}, IStoreMethods> {
   findByStoreUrl(storeUrl: string): Promise<IStoreDocument | null>;
+  findByStoreUrlAndTenant(storeUrl: string, tenantId: string): Promise<IStoreDocument | null>;
   findAllActive(): Promise<IStoreDocument[]>;
+  findAllActiveForTenant(tenantId: string): Promise<IStoreDocument[]>;
   existsByStoreUrl(storeUrl: string): Promise<boolean>;
   deleteStore(storeId: string): Promise<boolean>;
+  findByIdAndTenant(storeId: string, tenantId: string): Promise<IStoreDocument | null>;
+  findByTenant(tenantId: string, options?: { page?: number; limit?: number; search?: string }): Promise<{ stores: IStoreDocument[]; total: number }>;
 }
 
-export interface IStoreDocument extends Omit<IConnectedStore, '_id'>, Document, IStoreMethods {}
+export interface IStoreDocument extends Omit<IConnectedStore, '_id'>, Document, IStoreMethods {
+  // Multi-tenant fields (REQUIRED)
+  tenantId: string;
+  brandId: string;
+}
 
 const storeSchema = new Schema<IStoreDocument>(
   {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MULTI-TENANT FIELDS (ADDED)
+    // ─────────────────────────────────────────────────────────────────────────────
+    tenantId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    brandId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    // ─────────────────────────────────────────────────────────────────────────────
+
     storeUrl: {
       type: String,
       required: true,
@@ -153,13 +177,18 @@ const storeSchema = new Schema<IStoreDocument>(
 );
 
 // ============================================
-// Indexes
+// Indexes (Enhanced for Multi-Tenant)
 // ============================================
 
 storeSchema.index({ storeUrl: 1 });
 storeSchema.index({ consumerKey: 1 });
 storeSchema.index({ isActive: 1 });
 storeSchema.index({ lastSyncAt: 1 });
+
+// Compound indexes for tenant isolation
+storeSchema.index({ tenantId: 1, isActive: 1 });
+storeSchema.index({ tenantId: 1, storeUrl: 1 }, { unique: true });
+storeSchema.index({ tenantId: 1, brandId: 1 });
 
 // ============================================
 // Pre-save Hook - Encrypt consumer secret
@@ -251,10 +280,32 @@ storeSchema.statics.findByStoreUrl = function (storeUrl: string) {
 };
 
 /**
+ * Find store by URL within a specific tenant
+ * CRITICAL: tenantId is REQUIRED for isolation
+ */
+storeSchema.statics.findByStoreUrlAndTenant = function (storeUrl: string, tenantId: string) {
+  return this.findOne({
+    storeUrl: storeUrl.toLowerCase(),
+    tenantId, // Tenant isolation enforced
+  });
+};
+
+/**
  * Find all active stores
  */
 storeSchema.statics.findAllActive = function () {
   return this.find({ isActive: true });
+};
+
+/**
+ * Find all active stores for a specific tenant
+ * CRITICAL: tenantId is REQUIRED
+ */
+storeSchema.statics.findAllActiveForTenant = function (tenantId: string) {
+  return this.find({
+    isActive: true,
+    tenantId, // Tenant isolation enforced
+  });
 };
 
 /**
@@ -263,6 +314,43 @@ storeSchema.statics.findAllActive = function () {
 storeSchema.statics.existsByStoreUrl = async function (storeUrl: string): Promise<boolean> {
   const count = await this.countDocuments({ storeUrl: storeUrl.toLowerCase() });
   return count > 0;
+};
+
+/**
+ * Find store by ID within a specific tenant
+ * CRITICAL: Enforces tenant isolation
+ */
+storeSchema.statics.findByIdAndTenant = function (storeId: string, tenantId: string) {
+  return this.findOne({
+    _id: storeId,
+    tenantId, // Tenant isolation enforced
+  });
+};
+
+/**
+ * Find all stores for a specific tenant with pagination
+ * CRITICAL: tenantId is REQUIRED
+ */
+storeSchema.statics.findByTenant = function (
+  tenantId: string,
+  options: { page?: number; limit?: number; search?: string } = {}
+) {
+  const { page = 1, limit = 20, search } = options;
+  const query: Record<string, unknown> = { tenantId };
+
+  if (search) {
+    query.$or = [
+      { storeUrl: { $regex: search, $options: 'i' } },
+      { storeName: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+
+  return Promise.all([
+    this.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+    this.countDocuments(query),
+  ]).then(([stores, total]) => ({ stores, total }));
 };
 
 /**

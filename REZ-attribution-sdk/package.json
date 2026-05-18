@@ -1,0 +1,40 @@
+{
+  "name": "@rez/attribution-sdk",
+  "version": "1.0.0",
+  "description": "REZ Attribution SDK for browser and server-side event tracking",
+  "main": "dist/browser-pixel.js",
+  "module": "dist/browser-pixel.mjs",
+  "types": "dist/browser-pixel.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/browser-pixel.mjs",
+      "require": "./dist/browser-pixel.js",
+      "types": "./dist/browser-pixel.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest"
+  },
+  "keywords": [
+    "attribution",
+    "tracking",
+    "pixel",
+    "meta",
+    "facebook",
+    "capi",
+    "conversion",
+    "analytics"
+  ],
+  "author": "REZ Team",
+  "license": "Proprietary",
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0"
+  },
+  "peerDependencies": {}
+}

@@ -6,6 +6,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import {
   Screen,
   ScreenRegistration,
@@ -34,10 +35,11 @@ class ScreenStore {
 
   /**
    * Generate a unique API key for a screen
+   * FIX: Use crypto.randomBytes instead of Math.random()
    */
   private generateScreenApiKey(screenId: string): string {
-    // Generate a unique key using screen ID + random component
-    const randomPart = Math.random().toString(36).substring(2, 15);
+    // Generate cryptographically secure random part
+    const randomPart = crypto.randomBytes(12).toString('base64url');
     const screenPart = screenId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
     return `dooh_sk_${screenPart}_${randomPart}`;
   }

@@ -12,6 +12,7 @@ import mongoose from 'mongoose';
 
 import appConfig from './config';
 import routes from './routes';
+import tenantRoutes from './routes/tenantRoutes';
 import { auth } from './middleware/auth';
 import { webhookService } from './services/webhookService';
 import logger from './utils/logger';
@@ -64,6 +65,10 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // API routes with authentication
 app.use('/api/woocommerce', auth, routes);
+
+// Tenant-aware routes (with multi-tenant support)
+// These routes enforce tenant isolation via X-Tenant-Id and X-Brand-Id headers
+app.use('/api/woocommerce', tenantRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

@@ -420,7 +420,7 @@ export class DOOHService {
     // Setup graceful shutdown
     this.setupGracefulShutdown();
 
-    const port = this.config.port || parseInt(process.env.PORT || '4018');
+    const port = this.config.port || parseInt(process.env.PORT || '4019');
 
     return new Promise((resolve) => {
       this.app.listen(port, () => {
@@ -494,7 +494,7 @@ export function getDOOHService(): DOOHService | null {
 
 async function main(): Promise<void> {
   const config: DOOHServiceConfig = {
-    port: parseInt(process.env.PORT || '4018'),
+    port: parseInt(process.env.PORT || '4019'),
     guardrails: {
       min_budget_per_listing: 500,
       min_total_budget: 1000,

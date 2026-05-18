@@ -1,0 +1,19 @@
+{
+  "name": "@rez-media/intelligence",
+  "version": "1.0.0",
+  "description": "REZ Media Intelligence Connector - Connects REZ Media platform to REZ Intelligence",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

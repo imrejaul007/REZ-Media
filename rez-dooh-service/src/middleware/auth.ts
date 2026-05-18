@@ -5,6 +5,7 @@
  * Includes Redis-based rate limiting with in-memory fallback.
  */
 
+import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
 // Lazy import Redis to avoid circular dependencies
@@ -155,7 +156,7 @@ export function requestIdMiddleware(
 ): void {
   const requestId =
     (req.headers['x-request-id'] as string) ||
-    `dooh-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    `dooh-${Date.now()}-${crypto.randomBytes(8).toString('base64url')}`;
 
   res.setHeader('X-Request-Id', requestId);
   (req as any).requestId = requestId;

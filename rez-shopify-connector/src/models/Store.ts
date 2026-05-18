@@ -6,8 +6,14 @@ import type {
   WebhookTopic,
 } from '../types';
 
+// Tenant-aware Store Document interface
 export interface IStoreDocument extends Omit<ConnectedStore, 'webhookIds'>, Document {
   _id: mongoose.Types.ObjectId;
+
+  // Multi-tenant fields (ADDED)
+  tenantId: string;
+  brandId: string;
+
   webhookIds: Map<string, number>;
 }
 
@@ -87,10 +93,24 @@ const StoreInfoSchema = new Schema(
 
 const StoreSchema = new Schema<IStoreDocument>(
   {
+    // ─────────────────────────────────────────────────────────────
+    // MULTI-TENANT FIELDS (ADDED)
+    // ─────────────────────────────────────────────────────────────
+    tenantId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    brandId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    // ─────────────────────────────────────────────────────────────
+
     shopifyDomain: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       index: true,
@@ -98,7 +118,6 @@ const StoreSchema = new Schema<IStoreDocument>(
     shopifyStoreId: {
       type: Number,
       required: true,
-      unique: true,
     },
     accessToken: {
       type: String,
@@ -140,8 +159,10 @@ const StoreSchema = new Schema<IStoreDocument>(
   }
 );
 
-// Indexes for efficient queries
-StoreSchema.index({ isActive: 1, shopifyDomain: 1 });
+// Compound indexes for tenant isolation + efficient queries
+StoreSchema.index({ tenantId: 1, isActive: 1 });
+StoreSchema.index({ tenantId: 1, shopifyDomain: 1 }, { unique: true });
+StoreSchema.index({ tenantId: 1, brandId: 1 });
 StoreSchema.index({ 'syncStatus.products.status': 1 });
 StoreSchema.index({ 'syncStatus.orders.status': 1 });
 StoreSchema.index({ updatedAt: 1 });
@@ -217,31 +238,103 @@ StoreSchema.methods.setWebhookId = async function (
   }
 };
 
-// Static methods
+// Static methods with tenant isolation
 
+/**
+ * Find store by domain within a specific tenant
+ * CRITICAL: tenantId is REQUIRED for all queries
+ */
 StoreSchema.statics.findByDomain = function (
-  domain: string
+  domain: string,
+  tenantId: string
 ): Promise<IStoreDocument | null> {
-  return this.findOne({ shopifyDomain: domain.toLowerCase() });
+  return this.findOne({
+    shopifyDomain: domain.toLowerCase(),
+    tenantId, // Tenant isolation enforced
+  });
 };
 
+/**
+ * Find store by Shopify store ID within a specific tenant
+ */
 StoreSchema.statics.findByStoreId = function (
-  shopifyStoreId: number
+  shopifyStoreId: number,
+  tenantId: string
 ): Promise<IStoreDocument | null> {
-  return this.findOne({ shopifyStoreId });
+  return this.findOne({
+    shopifyStoreId,
+    tenantId, // Tenant isolation enforced
+  });
 };
 
-StoreSchema.statics.findActiveStores = function (): Promise<IStoreDocument[]> {
-  return this.find({ isActive: true }).exec();
+/**
+ * Find all active stores for a specific tenant
+ * CRITICAL: tenantId is REQUIRED
+ */
+StoreSchema.statics.findActiveStores = function (
+  tenantId: string
+): Promise<IStoreDocument[]> {
+  return this.find({
+    isActive: true,
+    tenantId, // Tenant isolation enforced
+  }).exec();
 };
 
+/**
+ * Find stores for sync within a specific tenant
+ */
 StoreSchema.statics.findStoresForSync = async function (
+  tenantId: string,
   entity: keyof SyncStatus
 ): Promise<IStoreDocument[]> {
   return this.find({
     isActive: true,
+    tenantId, // Tenant isolation enforced
     [`syncStatus.${entity}.status`]: { $ne: 'syncing' },
   }).exec();
+};
+
+/**
+ * Find all stores for a specific tenant (for listing)
+ */
+StoreSchema.statics.findByTenant = function (
+  tenantId: string,
+  options: { page?: number; limit?: number; search?: string; status?: string } = {}
+): Promise<{ stores: IStoreDocument[]; total: number }> {
+  const { page = 1, limit = 20, search, status } = options;
+  const query: Record<string, unknown> = { tenantId };
+
+  if (search) {
+    query.$or = [
+      { shopifyDomain: { $regex: search, $options: 'i' } },
+      { 'storeInfo.name': { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  if (status === 'active') {
+    query.isActive = true;
+  } else if (status === 'inactive') {
+    query.isActive = false;
+  }
+
+  return Promise.all([
+    this.find(query).skip((page - 1) * limit).limit(limit).sort({ createdAt: -1 }),
+    this.countDocuments(query),
+  ]).then(([stores, total]) => ({ stores, total }));
+};
+
+/**
+ * Find store by internal ID with tenant verification
+ * CRITICAL: tenantId is REQUIRED
+ */
+StoreSchema.statics.findByIdAndTenant = function (
+  storeId: string,
+  tenantId: string
+): Promise<IStoreDocument | null> {
+  return this.findOne({
+    _id: storeId,
+    tenantId, // Tenant isolation enforced
+  });
 };
 
 // Pre-save hook for domain normalization
